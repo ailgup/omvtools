@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Necrology PDF Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.16.0/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ical.js/1.4.0/ical.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        td, th {
+            padding: 10px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        input[type="checkbox"], input[type="text"] {
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Necrology PDF Generator</h1>
+
+    <label>iCal URL: <input type="text" id="icalUrl" value="https://calendar.google.com/calendar/ical/n5rk5akmkegimr76beupbkgjn8%40group.calendar.google.com/public/basic.ics"></label>
+    <br>
+    <button onclick="fetchICalData()">Pull from iCal</button>
+    <button onclick="generatePDF()">Download PDF</button>
+    <br>
+    <button onclick="sortByYear()">Sort by Year</button>
+    <button onclick="sortByDate()">Sort by Date</button>
+    <br>
+    <label>
+        <input onchange="renderDataTable()" type="checkbox" id="includeOMV" checked> Include non-OMV
+    </label>
+
+    <h2>Necrology Data</h2>
+    <label>Name: <input type="text" id="manualName"></label>
+    <label>Date: <input type="date" id="manualDate"></label>
+    <button onclick="addManualEntry()">Add Entry</button>
+    
+    <div id="data-table"></div>
+
+    <script>
+        let necrology = [];
+        
+        async function fetchICalData() {
+            const PROXY = "https://api.codetabs.com/v1/proxy/?quest="
+            const url = document.getElementById("icalUrl").value;
+            console.log("Fetching from:", url);
+            // Fetching logic here
+            const response = await fetch(PROXY + url);
+            const text = await response.text();
+            const jcalData = ICAL.parse(text);
+            const comp = new ICAL.Component(jcalData);
+            const events = comp.getAllSubcomponents("vevent");
+        
+        
+            events.forEach(event => {
+                const vevent = new ICAL.Event(event);
+                const name = vevent.summary;
+                const date = vevent.startDate.toJSDate();
+                
+                // Clean the name format to include the "+" at the beginning if it's not present
+                cleanedName = name;
+                console.log(name);
+                if (!name.startsWith("+")) {
+                    cleanedName = `+${name}`;
+                }
+                
+                cleanedName = cleanedName.replace(/\+ \s*/g, '+'); //remove whitespace
+                
+                // Clean up the name: remove leading nickname (if exists) and adjust title
+                cleanedName = cleanedName.replace(/^\+([a-zA-Z]{1,6}), /, '+');
+                
+                cleanedName = cleanedName.replace(/\+([A-Za-z\s.,]+(?:, OMV)?)\s*\((\d{4})-.?(\d{4})\)/, (match, name, startYear, endYear) => `+${name.trim()} (${endYear})`);
+                
+                cleanedName = cleanedName.replace(/\(\+(\d{4})\)/, '($1)')
+                cleanedName = cleanedName.replace(/\bP\.\s+/g, 'Fr. ');  // Replace "P." with "Fr."
+                
+
+                if (!cleanedName.startsWith("+")) {
+                    cleanedName = `+${cleanedName}`;
+                }
+                // Use regex to extract the year(s) from the name (including ranges like (1980-2019))
+                const yearMatch = cleanedName.match(/\((\d{4})[-–]?\d{4}\)/); // Match year range (e.g., 1980-2019)
+                const singleYearMatch = cleanedName.match(/\((\d{4})\)/); // Match a single year in parentheses (e.g., 1932)
+        
+                let year = date.getFullYear();  // Default to the year from the date
+        
+                if (yearMatch) {
+                    // If a year range is found (e.g., "1980-2019"), use the latter year (2019)
+                    year = parseInt(yearMatch[0].split('-')[1].trim(), 10);
+                } else if (singleYearMatch) {
+                    // If a single year is found (e.g., "1932"), use that year
+                    year = parseInt(singleYearMatch[1], 10);
+                }
+        
+                
+        
+                // Update the date object with the extracted year
+                date.setFullYear(year);
+        
+                const dateStr = date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+                
+                // Format the year in parentheses
+                const yearStr = `(${year})`;
+        
+                // Filter based on checkbox status
+                let isOMV = false;
+                if (cleanedName.includes('OMV')) {
+                    isOMV = true;
+                }
+                necrology.push({ name: cleanedName, year: yearStr, date: dateStr, dateObj: date, omv:isOMV });
+            });
+        
+            // Remove duplicates by checking both name and date
+            necrology = necrology.filter((value, index, self) => {
+                // Helper function to get the numeric month-day value for comparison
+                const getMonthDayNumeric = (dateObj) => (dateObj.getMonth() + 1) * 100 + dateObj.getDate();
+            
+                // Find the first occurrence of the name in the list
+                const firstOccurrenceIndex = self.findIndex((t) => t.name === value.name);
+            
+                // Compare dates, keep the earlier one by numeric month-day value
+                return firstOccurrenceIndex === index || getMonthDayNumeric(self[firstOccurrenceIndex].dateObj) <= getMonthDayNumeric(value.dateObj);
+            });
+            
+            
+            
+        
+            // Sort by latest death first
+            necrology.sort((a, b) => b.dateObj - a.dateObj);
+            renderDataTable();
+            return;
+        }
+
+        function renderDataTable() {
+            const tableDiv = document.getElementById("data-table");
+            let html = "<table><tr><th>Name</th><th>Date</th></tr>";
+            necrology.forEach(person => {
+                if (!document.getElementById('includeOMV').checked && !person.omv) {
+                    return; // Skip non-OMV entries if checkbox is unchecked
+                }
+                html += `<tr><td>${person.name}</td><td>${person.date}</td></tr>`;
+            });
+            html += "</table>";
+            tableDiv.innerHTML = html;
+        }
+        
+        function sortByYear() {
+            necrology.sort((a, b) => b.dateObj - a.dateObj);
+            renderDataTable();
+        }
+        
+        function sortByDate() {
+            necrology.sort((a, b) => a.dateObj.getMonth() - b.dateObj.getMonth() || a.dateObj.getDate() - b.dateObj.getDate());
+            renderDataTable();
+        }
+        
+        function addManualEntry() {
+            const name = document.getElementById("manualName").value;
+            const dateStr = document.getElementById("manualDate").value;
+            if (name && dateStr) {
+                const dateObj = new Date(dateStr);
+                necrology.push({ name, date: dateStr, dateObj });
+                renderDataTable();
+            }
+        }
+        function getVolume(date) {
+            const year = date.getFullYear();
+            if (year >= 2010) return 4;
+            if (year >= 2000) return 3;
+            if (year >= 1990) return 2;
+            return 1;
+        }
+        async function generatePDF() {
+            const { PDFDocument, rgb, StandardFonts } = PDFLib;
+            const pdfDoc = await PDFDocument.create();
+            const pageWidth = 792;  // 11 inches at 72 DPI (landscape)
+            const pageHeight = 612; // 8.5 inches at 72 DPI
+            const margin = 40;
+            const tableWidth = (pageWidth - 3 * margin) / 2; // Two tables per page
+            const columnWidths = [tableWidth / 3, tableWidth / 3, tableWidth / 3]; // 3 columns: Date, Name 1, Name 2
+            const lineHeight = 16;
+        
+            let volumeData = { 1: [], 2: [], 3: [], 4: [] };
+        
+            // Group names by date (ignoring year)
+            let groupedData = {};
+            necrology.forEach(({ name, dateObj }) => {
+                const month = dateObj.getMonth(); // 0 = Jan, 11 = Dec
+                const day = dateObj.getDate();
+                const formattedDate = dateObj.toLocaleDateString("en-US", { day: "numeric", month: "short" }); // e.g., "1-Mar"
+                const volume = getVolume(dateObj);
+        
+                if (!groupedData[volume]) {
+                    groupedData[volume] = {};
+                }
+                if (!groupedData[volume][formattedDate]) {
+                    groupedData[volume][formattedDate] = [];
+                }
+                groupedData[volume][formattedDate].push({ name, month, day });
+            });
+        
+            // Sort groupedData by month and day
+            for (let vol in groupedData) {
+                groupedData[vol] = Object.entries(groupedData[vol])
+                    .map(([date, names]) => ({ date, names }))
+                    .sort((a, b) => a.names[0].month - b.names[0].month || a.names[0].day - b.names[0].day);
+            }
+        
+            for (let vol in groupedData) {
+                let page = pdfDoc.addPage([pageWidth, pageHeight]);
+                const { width, height } = page.getSize();
+                const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+                const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+                const baseFontSize = 12;
+                let yOffset = height - margin;
+        
+                page.drawText(`Volume ${vol}`, {
+                    x: width / 2 - 40, y: yOffset,
+                    size: baseFontSize + 4, font: boldFont,
+                    color: rgb(0, 0, 0)
+                });
+        
+                yOffset -= 20;
+        
+                let column = 0; // 0 = left table, 1 = right table
+                let rowBuffer = [];
+                let lastMonth = null;
+        
+                groupedData[vol].forEach(({ date, names }) => {
+                    let dateObj = new Date(Date.parse(date));
+                    let month = dateObj.getMonth();
+        
+                    while (names.length > 0) {
+                        let name1 = names.shift()?.name || "";
+                        let name2 = names.shift()?.name || "";
+                        rowBuffer.push({ date, name1, name2, month });
+                        date = ""; // Only display the date once
+                    }
+                });
+        
+                // Function to draw a single table
+                function drawTable(x, yStart, rows) {
+                    let y = yStart;
+                    let lastMonth = null;
+        
+                    rows.forEach(({ date, name1, name2, month }) => {
+                        // Adjust font size if necessary
+                        let textSize = baseFontSize;
+                        let maxWidth = columnWidths[1] - 5; // Allow padding
+                        if (font.widthOfTextAtSize(name1, baseFontSize) > maxWidth || font.widthOfTextAtSize(name2, baseFontSize) > maxWidth) {
+                            textSize = 10; // Reduce font size to fit
+                        }
+                        if (font.widthOfTextAtSize(name1, textSize) > maxWidth || font.widthOfTextAtSize(name2, textSize) > maxWidth) {
+                            textSize = 8; // Further reduce font size if needed
+                        }
+        
+                        // Draw vertical line if month changes
+                        if (lastMonth !== null && lastMonth !== month) {
+                            page.drawLine({
+                                start: { x: x - 5, y: y + 10 },
+                                end: { x: x - 5, y: yStart + 5 },
+                                thickness: 1,
+                                color: rgb(0, 0, 0),
+                            });
+                        }
+                        lastMonth = month;
+        
+                        // Draw table content
+                        if (date) {
+                            page.drawText(date, { x: x, y: y, size: baseFontSize, font: boldFont, color: rgb(0, 0, 0) });
+                        }
+                        page.drawText(name1, { x: x + columnWidths[0], y: y, size: textSize, font, color: rgb(0, 0, 0) });
+                        page.drawText(name2, { x: x + columnWidths[0] + columnWidths[1], y: y, size: textSize, font, color: rgb(0, 0, 0) });
+        
+                        y -= lineHeight;
+                    });
+                    return y;
+                }
+        
+                let halfIndex = Math.ceil(rowBuffer.length / 2);
+                let leftTable = rowBuffer.slice(0, halfIndex);
+                let rightTable = rowBuffer.slice(halfIndex);
+        
+                yOffset = drawTable(margin, yOffset, leftTable);
+                drawTable(margin + tableWidth + margin, yOffset, rightTable);
+            }
+        
+            const pdfBytes = await pdfDoc.save();
+            downloadPDF(pdfBytes, "necrology.pdf");
+        }
+        function downloadPDF(pdfBytes, filename) {
+            const blob = new Blob([pdfBytes], { type: "application/pdf" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>

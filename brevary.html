@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Liturgy Booklet Generator</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      height: 100vh;
+      font-family: sans-serif;
+    }
+    textarea, iframe {
+      width: 50%;
+      height: 100%;
+      border: none;
+      padding: 1em;
+      box-sizing: border-box;
+      font-size: 14px;
+    }
+    #controls {
+      position: fixed;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+    }
+    button {
+      margin: 0 0.5em;
+      padding: 0.5em 1em;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="controls">
+  <button onclick="scrapeIbreviary()">Scrape Today</button>
+  <button onclick="downloadPDF()">Download PDF</button>
+</div>
+
+<textarea id="markdown"></textarea>
+<iframe id="pdfPreview"></iframe>
+
+<script>
+  const { jsPDF } = window.jspdf;
+
+  const markdownEl = document.getElementById("markdown");
+  const pdfPreviewEl = document.getElementById("pdfPreview");
+
+  async function scrapeIbreviary() {
+    const proxy = 'https://api.allorigins.win/get?url=';
+    const url = 'https://ibreviary.com/m2/breviario.php?s=vespri';
+    try {
+      const response = await fetch(`${proxy}${encodeURIComponent(url)}`);
+      const data = await response.json();
+      const html = data.contents;
+
+      // Extract content
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+
+      let content = formatBreviaryHTMLtoMarkdown(html);
+      const prayerSections = doc.querySelectorAll('.breve1, .breve2, .riga_ufficio, .titolo, .titolo2, .salmo');
+      prayerSections.forEach(sec => {
+        let text = sec.innerText.trim();
+        if (text) content += `### ${text}\n\n`;
+      });
+
+      markdownEl.value = content;
+      updatePreview();
+    } catch (err) {
+      alert('Error scraping iBreviary: ' + err.message);
+    }
+  }
+function formatBreviaryHTMLtoMarkdown(htmlString) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlString, 'text/html');
+
+    const content = doc.querySelector('#contenuto .inner');
+    if (!content) return 'No breviary content found.';
+
+    // Remove non-liturgical clutter
+    content.querySelectorAll('a[href^="#"], img, script, style').forEach(el => el.remove());
+
+    // SECTION HEADINGS → SMALL CAPS ### Headings
+    content.querySelectorAll('span.sezione').forEach(el => {
+        el.outerHTML = `\n\n### ${el.textContent.trim().toUpperCase()}\n\n`;
+    });
+
+    // RUBRICS → _italic_
+    content.querySelectorAll('span.rubrica').forEach(el => {
+        el.outerHTML = `\n\n_${el.textContent.trim()}_\n\n`;
+    });
+
+    // FIRST WORDS IN SMALL CAPS → Bold & uppercase
+    content.querySelectorAll('span.capolettera_piccolo').forEach(el => {
+        el.outerHTML = `**${el.textContent.trim().toUpperCase()}**`;
+    });
+
+    // CITATIONS / QUOTES → Markdown blockquote
+    content.querySelectorAll('span.citazione').forEach(el => {
+        el.outerHTML = `\n> ${el.textContent.trim()}\n`;
+    });
+
+    // Convert versicle/response markers
+    content.innerHTML = content.innerHTML
+        .replace(/℣/g, '\n℣') 
+        .replace(/℟/g, '\n℟');
+
+    // Italicize <em>, bold <strong>
+    content.querySelectorAll('em').forEach(el => {
+        el.outerHTML = `*${el.textContent.trim()}*`;
+    });
+    content.querySelectorAll('strong').forEach(el => {
+        el.outerHTML = `**${el.textContent.trim()}**`;
+    });
+
+    // Convert <br> to newlines
+    content.innerHTML = content.innerHTML.replace(/<br\s*\/?>/gi, '\n');
+
+    // Clean out all remaining tags
+    let markdown = content.textContent
+        .replace(/\n{3,}/g, '\n\n')      // Collapse excessive newlines
+        .replace(/[ \t]+\n/g, '\n')      // Remove trailing whitespace
+        .replace(/[*†]/g, '')            // Remove tone marks: asterisk and dagger
+        .trim();
+
+    return markdown;
+}
+
+
+  function updatePreview() {
+    const doc = new jsPDF({ format: 'letter', unit: 'in' });
+    const text = markdownEl.value;
+    const html = marked.parse(text);
+
+    // Create temp div to render HTML
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = html;
+    const lines = tempDiv.innerText.split("\n");
+
+    const margin = 0.5, lineHeight = 0.25;
+    let x = margin, y = margin;
+
+    doc.setFontSize(12);
+    for (let line of lines) {
+      if (y > 10.5) {
+        doc.addPage();
+        y = margin;
+      }
+      doc.text(line, x, y);
+      y += lineHeight;
+    }
+
+    const blob = doc.output("blob");
+    const url = URL.createObjectURL(blob);
+    pdfPreviewEl.src = url;
+  }
+
+  function downloadPDF() {
+    const doc = new jsPDF({ format: 'letter', unit: 'in' });
+    const text = markdownEl.value;
+    const html = marked.parse(text);
+
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = html;
+    const lines = tempDiv.innerText.split("\n");
+
+    const margin = 0.5, lineHeight = 0.25;
+    let x = margin, y = margin;
+
+    doc.setFontSize(12);
+    for (let line of lines) {
+      if (y > 10.5) {
+        doc.addPage();
+        y = margin;
+      }
+      doc.text(line, x, y);
+      y += lineHeight;
+    }
+
+    doc.save("liturgy-booklet.pdf");
+  }
+
+  // Live update
+  markdownEl.addEventListener("input", updatePreview);
+
+  // Initial load
+  scrapeIbreviary();
+</script>
+
+</body>
+</html>
