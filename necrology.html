@@ -31,6 +31,31 @@
         input[type="checkbox"], input[type="text"] {
             margin: 10px;
         }
+        #pdfPreview {
+            margin-top: 20px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        .preview-container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            margin-top: 20px;
+        }
+        .preview-page {
+            width: 100%;
+            height: 800px;
+            border: 1px solid #000;
+            background: white;
+        }
+        .preview-page iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
     </style>
 </head>
 <body>
@@ -48,6 +73,7 @@
         <input onchange="renderDataTable()" type="checkbox" id="includeOMV" checked> Include non-OMV
     </label>
 
+    <div id="pdfPreview"></div>
     <h2>Necrology Data</h2>
     <label>Name: <input type="text" id="manualName"></label>
     <label>Date: <input type="date" id="manualDate"></label>
@@ -57,6 +83,11 @@
 
     <script>
         let necrology = [];
+        
+        // Add window.onload event listener
+        window.onload = function() {
+            fetchICalData();
+        };
         
         async function fetchICalData() {
             const PROXY = "https://api.codetabs.com/v1/proxy/?quest="
@@ -69,7 +100,10 @@
             const comp = new ICAL.Component(jcalData);
             const events = comp.getAllSubcomponents("vevent");
         
-        
+            // Create a Set to track unique entries
+            const uniqueEntries = new Set();
+            necrology = []; // Clear existing data
+
             events.forEach(event => {
                 const vevent = new ICAL.Event(event);
                 const name = vevent.summary;
@@ -110,8 +144,6 @@
                     year = parseInt(singleYearMatch[1], 10);
                 }
         
-                
-        
                 // Update the date object with the extracted year
                 date.setFullYear(year);
         
@@ -125,23 +157,16 @@
                 if (cleanedName.includes('OMV')) {
                     isOMV = true;
                 }
-                necrology.push({ name: cleanedName, year: yearStr, date: dateStr, dateObj: date, omv:isOMV });
+
+                // Create a unique key for this entry
+                const entryKey = `${cleanedName}|${dateStr}`;
+                
+                // Only add if this is a unique entry
+                if (!uniqueEntries.has(entryKey)) {
+                    uniqueEntries.add(entryKey);
+                    necrology.push({ name: cleanedName, year: yearStr, date: dateStr, dateObj: date, omv: isOMV });
+                }
             });
-        
-            // Remove duplicates by checking both name and date
-            necrology = necrology.filter((value, index, self) => {
-                // Helper function to get the numeric month-day value for comparison
-                const getMonthDayNumeric = (dateObj) => (dateObj.getMonth() + 1) * 100 + dateObj.getDate();
-            
-                // Find the first occurrence of the name in the list
-                const firstOccurrenceIndex = self.findIndex((t) => t.name === value.name);
-            
-                // Compare dates, keep the earlier one by numeric month-day value
-                return firstOccurrenceIndex === index || getMonthDayNumeric(self[firstOccurrenceIndex].dateObj) <= getMonthDayNumeric(value.dateObj);
-            });
-            
-            
-            
         
             // Sort by latest death first
             necrology.sort((a, b) => b.dateObj - a.dateObj);
@@ -177,37 +202,372 @@
             const dateStr = document.getElementById("manualDate").value;
             if (name && dateStr) {
                 const dateObj = new Date(dateStr);
-                necrology.push({ name, date: dateStr, dateObj });
-                renderDataTable();
+                const formattedDate = dateObj.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+                
+                // Check for duplicates before adding
+                const isDuplicate = necrology.some(entry => 
+                    entry.name === name && entry.date === formattedDate
+                );
+                
+                if (!isDuplicate) {
+                    necrology.push({ 
+                        name, 
+                        date: formattedDate, 
+                        dateObj,
+                        omv: name.includes('OMV')
+                    });
+                    renderDataTable();
+                } else {
+                    alert("This entry already exists!");
+                }
             }
         }
         function getVolume(date) {
-            const year = date.getFullYear();
-            if (year >= 2010) return 4;
-            if (year >= 2000) return 3;
-            if (year >= 1990) return 2;
+            const month = date.getMonth(); // 0-11
+            const day = date.getDate();
+
+            // Helper function to check if a date is between two dates (inclusive)
+            function isDateBetween(date, startMonth, startDay, endMonth, endDay) {
+                const dateMonth = date.getMonth();
+                const dateDay = date.getDate();
+                
+                // Convert to comparable values (month * 100 + day)
+                const dateValue = dateMonth * 100 + dateDay;
+                const startValue = startMonth * 100 + startDay;
+                const endValue = endMonth * 100 + endDay;
+                
+                // Handle year wrap-around (e.g., Nov 27 to Jan 13)
+                if (startValue > endValue) {
+                    return dateValue >= startValue || dateValue <= endValue;
+                }
+                
+                return dateValue >= startValue && dateValue <= endValue;
+            }
+
+            // Volume 1: Nov 27 - Jan 13
+            if (isDateBetween(date, 10, 27, 0, 13)) {
+                return 1;
+            }
+            
+            // Volume 2: Feb 4 - Jun 13
+            if (isDateBetween(date, 1, 4, 5, 13)) {
+                return 2;
+            }
+            
+            // Volume 3: Jan 7 - Aug 5, excluding Mar 8 - May 12
+            if (isDateBetween(date, 0, 7, 7, 5)) {
+                // Check if date falls in the exclusion period
+                if (isDateBetween(date, 2, 8, 4, 12)) {
+                    return 4; // Move to Volume 4
+                }
+                return 3;
+            }
+            
+            // Volume 4: July 22 - Dec 2
+            if (isDateBetween(date, 6, 22, 11, 2)) {
+                return 4;
+            }
+
+            // Default to volume 1 if no match (shouldn't happen with proper data)
             return 1;
         }
         async function generatePDF() {
             const { PDFDocument, rgb, StandardFonts } = PDFLib;
             const pdfDoc = await PDFDocument.create();
-            const pageWidth = 792;  // 11 inches at 72 DPI (landscape)
-            const pageHeight = 612; // 8.5 inches at 72 DPI
-            const margin = 40;
-            const tableWidth = (pageWidth - 3 * margin) / 2; // Two tables per page
-            const columnWidths = [tableWidth / 3, tableWidth / 3, tableWidth / 3]; // 3 columns: Date, Name 1, Name 2
-            const lineHeight = 16;
-        
-            let volumeData = { 1: [], 2: [], 3: [], 4: [] };
-        
+            
+            // Letter size page in portrait (8.5" x 11" at 72 DPI)
+            const pageWidth = 612;  // 8.5 inches at 72 DPI
+            const pageHeight = 792; // 11 inches at 72 DPI
+            
+            // Card dimensions (4.25" x 6.75" at 72 DPI)
+            const cardWidth = 306;  // 4.25 inches at 72 DPI
+            const cardHeight = 486; // 6.75 inches at 72 DPI
+            
+            const margin = 20;
+            const tableWidth = cardWidth - (2 * margin);
+            const columnWidths = [tableWidth * 0.12, tableWidth * 0.44, tableWidth * 0.44]; // Adjusted proportions: Date, Name 1, Name 2
+            const lineHeight = 8; // Further reduced line height
+            const minFontSize = 6; // Minimum font size
+            const maxFontSize = 10; // Maximum font size
+            const dateFontSize = 8; // Slightly larger font for dates
+            const topMargin = 20; // Reduced top margin
+            const textMargin = 2; // Safety margin for text
+
+            // Initialize fonts first
+            const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+            const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+            // Helper function to wrap text to multiple lines
+            function wrapText(text, font, fontSize, maxWidth) {
+                const words = text.split(' ');
+                const lines = [];
+                let currentLine = words[0];
+
+                for (let i = 1; i < words.length; i++) {
+                    const word = words[i];
+                    const width = font.widthOfTextAtSize(currentLine + " " + word, fontSize);
+                    if (width < maxWidth - textMargin) {
+                        currentLine += " " + word;
+                    } else {
+                        lines.push(currentLine);
+                        currentLine = word;
+                    }
+                }
+                lines.push(currentLine);
+                return lines;
+            }
+
+            // Helper function to calculate optimal font size based on total entries
+            function calculateBaseFontSize(totalEntries, maxHeight, frontEntries, backEntries) {
+                // Calculate total lines for front and back
+                let frontLines = 0;
+                let backLines = 0;
+
+                frontEntries.forEach(entry => {
+                    const isSingleEntry = !entry.name2;
+                    const name1Width = isSingleEntry ? columnWidths[1] + columnWidths[2] : columnWidths[1];
+                    const name1Result = findOptimalFontSize(entry.name1, font, name1Width, minFontSize, maxFontSize);
+                    const name2Result = entry.name2 ? findOptimalFontSize(entry.name2, font, columnWidths[2], minFontSize, maxFontSize) : { size: maxFontSize, lines: [''] };
+                    frontLines += Math.max(name1Result.lines.length, name2Result.lines.length, 1);
+                });
+
+                backEntries.forEach(entry => {
+                    const isSingleEntry = !entry.name2;
+                    const name1Width = isSingleEntry ? columnWidths[1] + columnWidths[2] : columnWidths[1];
+                    const name1Result = findOptimalFontSize(entry.name1, font, name1Width, minFontSize, maxFontSize);
+                    const name2Result = entry.name2 ? findOptimalFontSize(entry.name2, font, columnWidths[2], minFontSize, maxFontSize) : { size: maxFontSize, lines: [''] };
+                    backLines += Math.max(name1Result.lines.length, name2Result.lines.length, 1);
+                });
+
+                // Ensure we have at least one line
+                frontLines = Math.max(1, frontLines);
+                backLines = Math.max(1, backLines);
+
+                const availableHeight = maxHeight - topMargin - margin;
+
+                // Helper function to check if entries fit with given font size
+                function checkEntriesFit(entries, fontSize, lineSpacing) {
+                    let currentHeight = 0;
+                    for (let entry of entries) {
+                        const isSingleEntry = !entry.name2;
+                        const name1Width = isSingleEntry ? columnWidths[1] + columnWidths[2] : columnWidths[1];
+                        const name1Result = findOptimalFontSize(entry.name1, font, name1Width, minFontSize, fontSize);
+                        const name2Result = entry.name2 ? findOptimalFontSize(entry.name2, font, columnWidths[2], minFontSize, fontSize) : { size: fontSize, lines: [''] };
+                        const maxLines = Math.max(name1Result.lines.length, name2Result.lines.length, 1);
+                        currentHeight += lineSpacing * maxLines;
+                        if (currentHeight > availableHeight) {
+                            return false;
+                        }
+                    }
+                    return true;
+                }
+
+                // Find optimal font size for front
+                let frontFontSize = maxFontSize;
+                let frontLineSpacing = frontFontSize * 1.05;
+                while (!checkEntriesFit(frontEntries, frontFontSize, frontLineSpacing) && frontFontSize > minFontSize) {
+                    frontFontSize -= 0.1;
+                    frontLineSpacing = frontFontSize * 1.05;
+                }
+
+                // Find optimal font size for back
+                let backFontSize = maxFontSize;
+                let backLineSpacing = backFontSize * 1.05;
+                while (!checkEntriesFit(backEntries, backFontSize, backLineSpacing) && backFontSize > minFontSize) {
+                    backFontSize -= 0.1;
+                    backLineSpacing = backFontSize * 1.05;
+                }
+
+                // Calculate height per line for debugging
+                const frontHeightPerLine = availableHeight / frontLines;
+                const backHeightPerLine = availableHeight / backLines;
+                
+                return { 
+                    frontFontSize,
+                    backFontSize,
+                    frontLineSpacing,
+                    backLineSpacing,
+                    frontHeightPerLine,
+                    backHeightPerLine,
+                    availableHeight,
+                    frontLines,
+                    backLines,
+                    totalLines: frontLines + backLines
+                };
+            }
+
+            // Helper function to find optimal font size
+            function findOptimalFontSize(text, font, maxWidth, minSize, maxSize) {
+                let size = maxSize;
+                while (size >= minSize) {
+                    const lines = wrapText(text, font, size, maxWidth);
+                    if (lines.length <= 2) { // Allow up to 2 lines
+                        return { size, lines };
+                    }
+                    size--;
+                }
+                // If we get here, use minimum size and force wrapping
+                return { size: minSize, lines: wrapText(text, font, minSize, maxWidth) };
+            }
+
+            // Helper function to calculate entry height
+            function calculateEntryHeight(name1Result, name2Result, isSingleEntry = false) {
+                if (isSingleEntry) {
+                    // For single entries, we only need to consider the height of the first name
+                    return lineHeight * name1Result.lines.length;
+                }
+                const maxLines = Math.max(
+                    name1Result.lines.length,
+                    name2Result.lines.length,
+                    1
+                );
+                return lineHeight * maxLines;
+            }
+
+            // Helper function to draw debug information
+            function drawDebugInfo(page, x, y, width, height, info) {
+                // Draw available space rectangle
+                page.drawRectangle({
+                    x: x,
+                    y: y - height,
+                    width: width,
+                    height: height,
+                    borderColor: rgb(0.8, 0.8, 0.8),
+                    borderWidth: 0.5,
+                });
+
+                // Ensure all values are numbers and have defaults
+                const safeNumber = (val) => typeof val === 'number' ? val.toFixed(1) : '0.0';
+
+                // Draw debug text
+                const debugText = [
+                    `Total Entries: ${info.totalEntries || 0}`,
+                    `Total Lines: ${info.totalLines || 0}`,
+                    `Front Lines: ${info.frontLines || 0}`,
+                    `Back Lines: ${info.backLines || 0}`,
+                    `Front Font Size: ${safeNumber(info.frontFontSize)}pt`,
+                    `Back Font Size: ${safeNumber(info.backFontSize)}pt`,
+                    `Front Line Spacing: ${safeNumber(info.frontLineSpacing)}pt`,
+                    `Back Line Spacing: ${safeNumber(info.backLineSpacing)}pt`,
+                    `Front Height/Line: ${safeNumber(info.frontHeightPerLine)}pt`,
+                    `Back Height/Line: ${safeNumber(info.backHeightPerLine)}pt`,
+                    `Available Height: ${safeNumber(info.availableHeight)}pt`,
+                    `Front Entries: ${info.frontEntries || 0}`,
+                    `Back Entries: ${info.backEntries || 0}`
+                ];
+
+                debugText.forEach((text, index) => {
+                    page.drawText(text, {
+                        x: x + 5,
+                        y: y - 15 - (index * 12),
+                        size: 6,
+                        font: font,
+                        color: rgb(0.5, 0.5, 0.5)
+                    });
+                });
+            }
+
+            // Helper function to draw a card
+            function drawCard(page, cardIndex, entries, volumeText, font, boldFont, isContinued = false, fontSize, lineSpacing, debugInfo = null) {
+                const cardX = cardIndex * (cardWidth + margin) + (pageWidth - (2 * cardWidth + margin)) / 2;
+                const cardY = (pageHeight - cardHeight) / 2;
+
+                // Draw card border
+                page.drawRectangle({
+                    x: cardX,
+                    y: cardY,
+                    width: cardWidth,
+                    height: cardHeight,
+                    borderColor: rgb(0, 0, 0),
+                    borderWidth: 1,
+                });
+
+                // Draw debug information if provided
+                if (debugInfo) {
+                    drawDebugInfo(page, cardX, cardY + cardHeight, cardWidth, cardHeight, debugInfo);
+                }
+
+                // Draw volume number only if not continued
+                if (!isContinued) {
+                    page.drawText(volumeText, {
+                        x: cardX + margin,
+                        y: cardY + cardHeight - margin - 12,
+                        size: fontSize + 1,
+                        font: boldFont,
+                        color: rgb(0, 0, 0)
+                    });
+                }
+
+                let yOffset = cardY + cardHeight - margin - (isContinued ? 10 : topMargin);
+
+                // Draw entries
+                entries.forEach(({ date, name1, name2 }) => {
+                    const isSingleEntry = !name2;
+                    const name1Width = isSingleEntry ? columnWidths[1] + columnWidths[2] : columnWidths[1];
+                    
+                    // Find optimal font sizes and wrap if necessary
+                    const name1Result = findOptimalFontSize(name1, font, name1Width, minFontSize, fontSize);
+                    const name2Result = name2 ? findOptimalFontSize(name2, font, columnWidths[2], minFontSize, fontSize) : { size: fontSize, lines: [''] };
+
+                    // Draw date
+                    page.drawText(date, {
+                        x: cardX + margin,
+                        y: yOffset,
+                        size: dateFontSize,
+                        font: boldFont,
+                        color: rgb(0, 0, 0)
+                    });
+
+                    // Draw name1 (potentially multiple lines)
+                    let name1Y = yOffset;
+                    name1Result.lines.forEach((line, index) => {
+                        page.drawText(line, {
+                            x: cardX + margin + columnWidths[0],
+                            y: name1Y - (index * lineSpacing),
+                            size: name1Result.size,
+                            font: font,
+                            color: rgb(0, 0, 0)
+                        });
+                    });
+
+                    // Draw name2 if present (potentially multiple lines)
+                    if (name2) {
+                        let name2Y = yOffset;
+                        name2Result.lines.forEach((line, index) => {
+                            page.drawText(line, {
+                                x: cardX + margin + columnWidths[0] + columnWidths[1],
+                                y: name2Y - (index * lineSpacing),
+                                size: name2Result.size,
+                                font: font,
+                                color: rgb(0, 0, 0)
+                            });
+                        });
+                    }
+
+                    // Adjust yOffset based on the maximum number of lines used
+                    const maxLines = Math.max(
+                        name1Result.lines.length,
+                        name2Result.lines.length,
+                        1
+                    );
+                    yOffset -= lineSpacing * maxLines;
+                });
+            }
+
+            // Process all volumes and prepare their entries
+            let volumeEntries = { 1: [], 2: [], 3: [], 4: [] };
+
+            // First, sort all entries by date
+            necrology.sort((a, b) => a.dateObj - b.dateObj);
+
             // Group names by date (ignoring year)
             let groupedData = {};
             necrology.forEach(({ name, dateObj }) => {
-                const month = dateObj.getMonth(); // 0 = Jan, 11 = Dec
+                const month = dateObj.getMonth();
                 const day = dateObj.getDate();
-                const formattedDate = dateObj.toLocaleDateString("en-US", { day: "numeric", month: "short" }); // e.g., "1-Mar"
+                const formattedDate = dateObj.toLocaleDateString("en-US", { day: "numeric", month: "short" });
                 const volume = getVolume(dateObj);
-        
+
                 if (!groupedData[volume]) {
                     groupedData[volume] = {};
                 }
@@ -216,95 +576,175 @@
                 }
                 groupedData[volume][formattedDate].push({ name, month, day });
             });
-        
-            // Sort groupedData by month and day
+
+            // Sort groupedData by month and day for each volume
             for (let vol in groupedData) {
                 groupedData[vol] = Object.entries(groupedData[vol])
                     .map(([date, names]) => ({ date, names }))
-                    .sort((a, b) => a.names[0].month - b.names[0].month || a.names[0].day - b.names[0].day);
+                    .sort((a, b) => {
+                        // Special handling for Volume 1 (Nov-Dec before Jan)
+                        if (vol === "1") {
+                            const aMonth = a.names[0].month;
+                            const bMonth = b.names[0].month;
+                            
+                            // If one is Nov/Dec and the other is Jan, put Nov/Dec first
+                            if ((aMonth === 10 || aMonth === 11) && bMonth === 0) return -1;
+                            if (aMonth === 0 && (bMonth === 10 || bMonth === 11)) return 1;
+                            
+                            // Otherwise sort normally
+                            return a.names[0].month - b.names[0].month || a.names[0].day - b.names[0].day;
+                        }
+                        
+                        // Normal sorting for other volumes
+                        return a.names[0].month - b.names[0].month || a.names[0].day - b.names[0].day;
+                    });
             }
-        
+
+            // Process each volume's entries
             for (let vol in groupedData) {
-                let page = pdfDoc.addPage([pageWidth, pageHeight]);
-                const { width, height } = page.getSize();
-                const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-                const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-                const baseFontSize = 12;
-                let yOffset = height - margin;
-        
-                page.drawText(`Volume ${vol}`, {
-                    x: width / 2 - 40, y: yOffset,
-                    size: baseFontSize + 4, font: boldFont,
-                    color: rgb(0, 0, 0)
-                });
-        
-                yOffset -= 20;
-        
-                let column = 0; // 0 = left table, 1 = right table
-                let rowBuffer = [];
-                let lastMonth = null;
-        
+                let allEntries = [];
                 groupedData[vol].forEach(({ date, names }) => {
-                    let dateObj = new Date(Date.parse(date));
-                    let month = dateObj.getMonth();
-        
                     while (names.length > 0) {
                         let name1 = names.shift()?.name || "";
                         let name2 = names.shift()?.name || "";
-                        rowBuffer.push({ date, name1, name2, month });
-                        date = ""; // Only display the date once
+                        allEntries.push({ date, name1, name2 });
                     }
                 });
-        
-                // Function to draw a single table
-                function drawTable(x, yStart, rows) {
-                    let y = yStart;
-                    let lastMonth = null;
-        
-                    rows.forEach(({ date, name1, name2, month }) => {
-                        // Adjust font size if necessary
-                        let textSize = baseFontSize;
-                        let maxWidth = columnWidths[1] - 5; // Allow padding
-                        if (font.widthOfTextAtSize(name1, baseFontSize) > maxWidth || font.widthOfTextAtSize(name2, baseFontSize) > maxWidth) {
-                            textSize = 10; // Reduce font size to fit
-                        }
-                        if (font.widthOfTextAtSize(name1, textSize) > maxWidth || font.widthOfTextAtSize(name2, textSize) > maxWidth) {
-                            textSize = 8; // Further reduce font size if needed
-                        }
-        
-                        // Draw vertical line if month changes
-                        if (lastMonth !== null && lastMonth !== month) {
-                            page.drawLine({
-                                start: { x: x - 5, y: y + 10 },
-                                end: { x: x - 5, y: yStart + 5 },
-                                thickness: 1,
-                                color: rgb(0, 0, 0),
-                            });
-                        }
-                        lastMonth = month;
-        
-                        // Draw table content
-                        if (date) {
-                            page.drawText(date, { x: x, y: y, size: baseFontSize, font: boldFont, color: rgb(0, 0, 0) });
-                        }
-                        page.drawText(name1, { x: x + columnWidths[0], y: y, size: textSize, font, color: rgb(0, 0, 0) });
-                        page.drawText(name2, { x: x + columnWidths[0] + columnWidths[1], y: y, size: textSize, font, color: rgb(0, 0, 0) });
-        
-                        y -= lineHeight;
-                    });
-                    return y;
+
+                // Calculate how many entries can fit on the front
+                let frontEntries = [];
+                let backEntries = [];
+                const maxHeight = cardHeight - topMargin - margin - 10; // Available height for entries
+
+                // First, calculate the total height needed for all entries with a test font size
+                let totalHeight = 0;
+                let entryHeights = [];
+                const testFontSize = 8; // Use a reasonable test font size
+                const testLineSpacing = testFontSize * 1.05;
+
+                allEntries.forEach(entry => {
+                    const isSingleEntry = !entry.name2;
+                    const name1Width = isSingleEntry ? columnWidths[1] + columnWidths[2] : columnWidths[1];
+                    const name1Result = findOptimalFontSize(entry.name1, font, name1Width, minFontSize, testFontSize);
+                    const name2Result = entry.name2 ? findOptimalFontSize(entry.name2, font, columnWidths[2], minFontSize, testFontSize) : { size: testFontSize, lines: [''] };
+                    const entryHeight = calculateEntryHeight(name1Result, name2Result, isSingleEntry);
+                    entryHeights.push(entryHeight);
+                    totalHeight += entryHeight;
+                });
+
+                // Calculate target height for front (slightly less than half to account for potential larger font)
+                const targetFrontHeight = maxHeight * 0.48; // 48% of available height
+                let currentHeight = 0;
+
+                // Distribute entries between front and back
+                allEntries.forEach((entry, index) => {
+                    if (currentHeight + entryHeights[index] <= targetFrontHeight) {
+                        frontEntries.push(entry);
+                        currentHeight += entryHeights[index];
+                    } else {
+                        backEntries.push(entry);
+                    }
+                });
+
+                // If the split is too uneven (more than 60/40), try to balance it
+                if (frontEntries.length > 0 && backEntries.length > 0) {
+                    const frontRatio = frontEntries.length / allEntries.length;
+                    if (frontRatio > 0.6) {
+                        // Move some entries from front to back
+                        const entriesToMove = Math.ceil((frontEntries.length - backEntries.length) / 2);
+                        backEntries = [...frontEntries.slice(-entriesToMove), ...backEntries];
+                        frontEntries = frontEntries.slice(0, -entriesToMove);
+                    } else if (frontRatio < 0.4) {
+                        // Move some entries from back to front
+                        const entriesToMove = Math.ceil((backEntries.length - frontEntries.length) / 2);
+                        frontEntries = [...frontEntries, ...backEntries.slice(0, entriesToMove)];
+                        backEntries = backEntries.slice(entriesToMove);
+                    }
                 }
-        
-                let halfIndex = Math.ceil(rowBuffer.length / 2);
-                let leftTable = rowBuffer.slice(0, halfIndex);
-                let rightTable = rowBuffer.slice(halfIndex);
-        
-                yOffset = drawTable(margin, yOffset, leftTable);
-                drawTable(margin + tableWidth + margin, yOffset, rightTable);
+
+                // Calculate font size based on total lines
+                const { 
+                    frontFontSize,
+                    backFontSize,
+                    frontLineSpacing,
+                    backLineSpacing,
+                    frontHeightPerLine,
+                    backHeightPerLine,
+                    availableHeight,
+                    frontLines,
+                    backLines,
+                    totalLines 
+                } = calculateBaseFontSize(
+                    allEntries.length,
+                    maxHeight,
+                    frontEntries,
+                    backEntries
+                );
+
+                volumeEntries[vol] = {
+                    front: frontEntries,
+                    back: backEntries,
+                    frontFontSize,
+                    backFontSize,
+                    frontLineSpacing,
+                    backLineSpacing,
+                    debugInfo: {
+                        totalEntries: allEntries.length,
+                        totalLines,
+                        frontLines,
+                        backLines,
+                        frontFontSize,
+                        backFontSize,
+                        frontLineSpacing,
+                        backLineSpacing,
+                        frontHeightPerLine,
+                        backHeightPerLine,
+                        availableHeight,
+                        frontEntries: frontEntries.length,
+                        backEntries: backEntries.length
+                    }
+                };
             }
-        
-            const pdfBytes = await pdfDoc.save();
-            downloadPDF(pdfBytes, "necrology.pdf");
+
+            // Create the 4 pages in the correct order
+            // Page 1: Front of Vol 1 and Vol 2
+            let page = pdfDoc.addPage([pageWidth, pageHeight]);
+            drawCard(page, 0, volumeEntries[1].front, "Volume 1", font, boldFont, false, volumeEntries[1].frontFontSize, volumeEntries[1].frontLineSpacing, volumeEntries[1].debugInfo);
+            drawCard(page, 1, volumeEntries[2].front, "Volume 2", font, boldFont, false, volumeEntries[2].frontFontSize, volumeEntries[2].frontLineSpacing, volumeEntries[2].debugInfo);
+
+            // Page 2: Back of Vol 1 and Vol 2
+            page = pdfDoc.addPage([pageWidth, pageHeight]);
+            drawCard(page, 0, volumeEntries[1].back, "", font, boldFont, true, volumeEntries[1].backFontSize, volumeEntries[1].backLineSpacing, volumeEntries[1].debugInfo);
+            drawCard(page, 1, volumeEntries[2].back, "", font, boldFont, true, volumeEntries[2].backFontSize, volumeEntries[2].backLineSpacing, volumeEntries[2].debugInfo);
+
+            // Page 3: Front of Vol 3 and Vol 4
+            page = pdfDoc.addPage([pageWidth, pageHeight]);
+            drawCard(page, 0, volumeEntries[3].front, "Volume 3", font, boldFont, false, volumeEntries[3].frontFontSize, volumeEntries[3].frontLineSpacing, volumeEntries[3].debugInfo);
+            drawCard(page, 1, volumeEntries[4].front, "Volume 4", font, boldFont, false, volumeEntries[4].frontFontSize, volumeEntries[4].frontLineSpacing, volumeEntries[4].debugInfo);
+
+            // Page 4: Back of Vol 3 and Vol 4
+            page = pdfDoc.addPage([pageWidth, pageHeight]);
+            drawCard(page, 0, volumeEntries[3].back, "", font, boldFont, true, volumeEntries[3].backFontSize, volumeEntries[3].backLineSpacing, volumeEntries[3].debugInfo);
+            drawCard(page, 1, volumeEntries[4].back, "", font, boldFont, true, volumeEntries[4].backFontSize, volumeEntries[4].backLineSpacing, volumeEntries[4].debugInfo);
+
+            // Function to update PDF preview
+            async function updatePDFPreview() {
+                const pdfBytes = await pdfDoc.save();
+                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                const url = URL.createObjectURL(blob);
+                
+                const previewContainer = document.getElementById('pdfPreview');
+                previewContainer.innerHTML = `
+                    <div class="preview-container">
+                        <div class="preview-page">
+                            <iframe src="${url}" type="application/pdf"></iframe>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Update preview after generating PDF
+            await updatePDFPreview();
         }
         function downloadPDF(pdfBytes, filename) {
             const blob = new Blob([pdfBytes], { type: "application/pdf" });

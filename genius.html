@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Working Genius Quiz</title>
+    <link rel="stylesheet" href="genius-styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div id="start-screen" class="screen">
+            <h1>Working Genius Quiz</h1>
+            <p>Discover your natural working geniuses through this assessment.</p>
+            <button onclick="startQuiz()">Start Quiz</button>
+        </div>
+
+        <div id="quiz-screen" class="screen hidden">
+            <div class="progress-bar">
+                <div id="progress"></div>
+            </div>
+            <div id="questions-container">
+                <table class="questions-table">
+                    <tbody>
+                        <!-- Questions will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="navigation-buttons">
+                <button id="prev-button" onclick="previousPage()" class="hidden">Previous</button>
+                <button id="next-button" onclick="nextPage()">Next</button>
+            </div>
+            <div id="debug-panel" class="hidden">
+                <h3>Live Scores</h3>
+                <div id="debug-scores"></div>
+                <button onclick="autofillQuestions()" class="debug-button">Autofill Questions</button>
+            </div>
+        </div>
+
+        <div id="calculating-screen" class="screen hidden">
+            <div class="calculating-animation">
+                <i class="fas fa-cog fa-spin"></i>
+                <h2>Calculating Your Working Genius</h2>
+            </div>
+        </div>
+
+        <div id="results-screen" class="screen hidden">
+            <h2>Your Working Genius Results</h2>
+            <div id="results-container">
+                <div class="genius-section">
+                    <h3 class="pairing-title" id="top-two-title"></h3>
+                    <p id="top-two-desc" class="pairing-desc"></p>
+                    <div class="gear-container">
+                        <div class="gear genius">
+                            <i class="fas fa-cog"></i>
+                            <span id="top-gear-1"></span>
+                        </div>
+                        <div class="gear genius">
+                            <i class="fas fa-cog"></i>
+                            <span id="top-gear-2"></span>
+                        </div>
+                    </div>
+                    <div class="categories">
+                        <h4>Working Geniuses</h4>
+                        <p class="section-desc">These are the two types of work that give you joy and energy. You naturally gravitate toward these areas and excel at them.</p>
+                        <p id="top-two"></p>
+                    </div>
+                </div>
+                <div class="genius-section">
+                    <div class="categories">
+                        <h4>Competency</h4>
+                        <p class="section-desc">These are areas where you neither find complete joy nor frustration. You can perform these types of work competently but they don't energize you.</p>
+                        <p id="middle-two"></p>
+                    </div>
+                    <div class="gear-container">
+                        <div class="gear competency">
+                            <i class="fas fa-cog"></i>
+                            <span id="middle-gear-1"></span>
+                        </div>
+                        <div class="gear competency">
+                            <i class="fas fa-cog"></i>
+                            <span id="middle-gear-2"></span>
+                        </div>
+                    </div>
+                    <p id="middle-two-desc" class="pairing-desc"></p>
+                </div>
+                <div class="genius-section">
+                    <div class="categories">
+                        <h4>Frustration</h4>
+                        <p class="section-desc">These types of work drain your energy and can be a source of guilt. While you can't always avoid them, it's best to minimize time spent in these areas.</p>
+                        <p id="least-two"></p>
+                    </div>
+                    <div class="gear-container">
+                        <div class="gear frustration">
+                            <i class="fas fa-cog"></i>
+                            <span id="least-gear-1"></span>
+                        </div>
+                        <div class="gear frustration">
+                            <i class="fas fa-cog"></i>
+                            <span id="least-gear-2"></span>
+                        </div>
+                    </div>
+                    <p id="least-two-desc" class="pairing-desc"></p>
+                </div>
+            </div>
+            <div class="genius-types-section">
+                <h3>The Six Types of Working Genius</h3>
+                <div class="genius-types-grid">
+                    <div class="genius-type">
+                        <h4>The Genius of Wonder (W)</h4>
+                        <p>The natural gift of pondering the possibility of greater potential and opportunity in a given situation. People with this genius are constantly curious and on the lookout for what could be improved.</p>
+                    </div>
+                    <div class="genius-type">
+                        <h4>The Genius of Invention (I)</h4>
+                        <p>The natural gift of creating original and novel ideas and solutions. People who have it love to generate new ideas and solutions to problems and are comfortable coming up with something out of nothing.</p>
+                    </div>
+                    <div class="genius-type">
+                        <h4>The Genius of Discernment (D)</h4>
+                        <p>The natural gift of intuitively and instinctively evaluating ideas and situations. People with this type of genius have a natural ability when it comes to evaluating or assessing a given idea or situation and providing guidance.</p>
+                    </div>
+                    <div class="genius-type">
+                        <h4>The Genius of Galvanizing (G)</h4>
+                        <p>The natural gift of rallying, inspiring and organizing others to take action. People who have it enjoy bringing energy and movement to an idea or decision.</p>
+                    </div>
+                    <div class="genius-type">
+                        <h4>The Genius of Enablement (E)</h4>
+                        <p>The natural gift of providing encouragement and assistance for an idea or project. People with this type of genius are quick to respond to the needs of others by offering their cooperation and help with a project, program or effort.</p>
+                    </div>
+                    <div class="genius-type">
+                        <h4>The Genius of Tenacity (T)</h4>
+                        <p>The natural gift of pushing projects or tasks to completion to achieve results. People who have this genius push for required standards of excellence and live to see the impact of their work.</p>
+                    </div>
+                </div>
+            </div>
+            <button onclick="restartQuiz()">Take Quiz Again</button>
+        </div>
+    </div>
+
+    <script>
+        const questions = {
+            1: ["I have a gift for rallying people around a plan or idea, and inspiring them to take action", "G"],
+            2: ["I am comfortable sitting and contemplating the meaning of things longer than most others are", "W"],
+            3: ["I can't help but come up with new and original ideas, even when it's not necessary", "I"],
+            4: ["I get more satisfaction and fulfillment than most people from seeing a project through to its finish", "T"],
+            5: ["People who know me would say I naturally respond to the needs of others, and on their terms", "E"],
+            6: ["Others say I have a knack for convincing people to get involved in and support projects and ideas", "G"],
+            7: ["People say I can't stop innovating or proposing new ideas", "I"],
+            8: ["I am much more capable than most people in using my gut instincts when there is little data or information available", "D"],
+            9: ["I am particularly bothered by seeing unmet potential in people or in my environment", "W"],
+            10: ["Compared to others, I want the tasks that I work on to have clearly defined standards and outcomes", "T"],
+            11: ["I find helping people to be more deeply fulfilling than others do", "E"],
+            12: ["I often start thinking about my next new idea before my last one has been fully developed", "I"],
+            13: ["People say that I have a rare talent for providing uniquely insightful advice and perspective", "D"],
+            14: ["I can't help but prod and convince others to do something that I believe in or enjoy", "G"],
+            15: ["Others would say I am relentless in my attention to detail and completion of goals", "T"],
+            16: ["I spend more time than most people reflecting on and contemplating problems in the world around me", "W"],
+            17: ["Others would say I have inexplicably better instincts and intuition than most people", "D"],
+            18: ["I get energy when I have to create something new out of nothing", "I"],
+            19: ["Compared to most others, I am an exceedingly responsive and helpful person", "E"],
+            20: ["Others would say I quickly and enthusiastically rally people around new ideas", "G"],
+            21: ["I rarely miss a deadline or target and couldn't imagine letting it happen", "T"],
+            22: ["I have a unique and undeniable ability to identify the underlying essence of any situation or challenge", "D"],
+            23: ["I can't help but contemplate opportunities longer than most others would", "W"],
+            24: ["Service and hospitality are a big part of my identity", "E"],
+            25: ["Others consider me to be an extremely innovative person", "I"],
+            26: ["More than most people, I really enjoy getting others excited about a new idea or possibility", "G"],
+            27: ["I am extremely gifted at seeing how emotional factors must be integrated into decisions and situations", "D"],
+            28: ["I can't help but empathize with people and support them in whatever they need", "E"],
+            29: ["I enjoy having the freedom to create something new rather than having to tweak or edit something that has already been created", "I"],
+            30: ["People who know me well would say that I often get lost in my own thoughts", "W"],
+            31: ["Compared to most people, I really enjoy driving a project or task through to final completion", "T"],
+            32: ["Compared to most others, I'm good at recruiting people to get involved and pushing them to start moving", "G"],
+            33: ["People say that I have an uncanny ability to assess or evaluate an idea, even without extensive detail or information", "D"],
+            34: ["I find myself asking why things are the way they are more than most others do", "W"],
+            35: ["I feel like I am the first person that people ask to volunteer because they know I will almost always say yes", "E"],
+            36: ["Being an original and creative thinker is a big part of my identity", "I"],
+            37: ["When momentum and progress slow down, I enjoy being the one to reenergize people to push forward", "G"],
+            38: ["I am uniquely gifted at recognizing subtle nuances, trends and patterns that most others miss", "D"],
+            39: ["I get energy from having a list of specific tasks in front of me", "T"],
+            40: ["I can't help but get lost in pondering the bigger picture of things", "W"],
+            41: ["I naturally and easily encourage others in whatever excites them", "E"],
+            42: ["I have extremely high standards of precision and quality.", "T"]
+        };
+
+        const geniusTypes = {
+            "W": "Wonder",
+            "I": "Invention",
+            "D": "Discernment",
+            "G": "Galvanizing",
+            "E": "Enablement",
+            "T": "Tenacity"
+        };
+
+        const pairingDescriptions = {
+            'WI': 'The Creative Dreamer - People with this pairing derive real joy and energy from contemplating the world around them and generating a fountain of new ideas. Generally idealistic and future-oriented, they are passionate about new possibilities that break through unnecessary boundaries. They don\'t value practicality, focus or implementation as much as idealism and ingenuity. This sometimes leads to stress or chaos among people around them who might be looking for realism and actionability.',
+            'WD': 'The Contemplative Counselor - People with this pairing derive real joy and satisfaction from using their intuition and instincts to evaluate ideas and plans, and to provide others with thoughtful feedback. They tend to be extremely observant and deep in their thinking, and express their insights using impactful words. Because of their proclivity to nuance, they can sometimes be hesitant to declare certainty or express confidence in their own judgments.',
+            'WG': 'The Philosophical Motivator - People with this pairing derive real joy and energy from contemplating potential in the world around them, passionately exhorting and encouraging others. They are idealistic and enthusiastic. Their combination leads them to sometimes experience and portray a sense of impulsivity or unpredictability, as they go back and forth between passionate action and cautious reflection.',
+            'WE': 'The Idealistic Supporter - People with this pairing derive real joy and energy from providing meaningful support to causes that align with their idealistic values and sense of belonging. They are often modest about their abilities, loyal, and selfless, proving to be extremely valuable, low-maintenance team members. Because of their depth and desire to please others, they can sometimes be overly deferential and often hesitate to initiate change, preferring to let others make the first move.',
+            'WT': 'The Careful Implementer - People with this pairing derive real joy and satisfaction from getting things done in a thorough and reliable way, as long as they understand the rationale and importance of what they are doing. They are a mysterious mix of practicality and inquisitiveness, action, and reflection. As a result of the divergence between Wonder and Tenacity, they often find themselves experiencing and projecting angst in the midst of a project, feeling an almost overwhelming need to slow down and ask questions that might alleviate potential problems.',
+            'ID': 'The Discriminating Ideator - People with this pairing get real energy and joy from using their intuition and instinctive ability to come up with new ideas from scratch, and they are good at using integrative thinking and pattern recognition rather than data and expertise. As a result, they are particularly effective in solving problems and coming up with workable, practical solutions with a particularly high level of success. They can sometimes appear impatient and over-confident when they receive pushback around their ideas, and they often lose interest after the initial phase of Invention is over.',
+            'IG': 'The Evangelizing Innovator - People with this pairing derive real joy and energy from generating new ideas and convincing others of an idea\'s merit. Exuberant and enthusiastic, they are not easily deterred by initial pushback, and enjoy the challenge of sharing ideas to convince others to act. They can be hasty to start selling ideas before taking time to fully consider the prudence of an idea, and can be initially perceived as slightly over-the-top in their approach.',
+            'IE': 'The Adaptable Designer - People with this pairing derive real joy and energy from providing new solutions and ideas that serve the unique needs of others. They have the rare ability to balance their passion for ingenuity with the capacity to adjust to the desires of the people they are serving. They are creative, flexible, open to feedback, and easy to work with. In their desire to please others, they are too quick to accommodate and avoid advocating for their own ideas. This can leave them feeling undervalued.',
+            'IT': 'The Methodical Architect - People with this pairing get real joy and energy from designing practical solutions to problems that are based on ingenuity, rationale, and precision. They work in a steady and reliable way when generating new ideas, and are not easily distracted by possibilities that might prove logistically unfeasible. In their dogged pursuit of a workable solution, they can sometimes miss the nuance of a given situation or overlook human needs.',
+            'DG': 'The Intuitive Activator - People with this pairing get real joy and energy from instinctually evaluating ideas and situations, and quickly identifying the right course of action to take. They generally make quick and surprisingly accurate assessments, often without specific knowledge or data, and artfully rally others to agree with them and their bias for action. Because of their skills and confidence, they can sometimes be cavalier in their declarations and may appear impatient or dismissive when made to consider critical details required for implementation.',
+            'DE': 'The Insightful Collaborator - People with this pairing derive real joy and energy from providing others with astute and empathic assistance, based on their intuition and instinct. They are quintessential team players, bringing together exceptional, timely and shrewd counsel, in a selfless manner. They sometimes hesitate to push people to heed their advice, and can be deferential to others when they sense resistance. These tendencies can often leave them feeling underappreciated.',
+            'DT': 'The Judicious Accomplisher - People with this pairing derive real joy and energy from getting the right things done efficiently and effectively, and using their judgement to avoid wasting time and resources. They get a lot done by identifying the highest priorities and holding themselves to high standards of execution. They are prudent, focused and diligent. They often feel unnecessary angst about the possibility of failing or when working with others who do not share their high standards in driving for closure.',
+            'GE': 'The Enthusiastic Encourager - People with this pairing derive joy and energy from inspiring and supporting others to grow, improve, and feel good about themselves. They are positive, exuberant and optimistic, gladly demonstrating their excitement about the potential of others. They are consummate cheerleaders, in the truest sense of the word. In their desire to be positive, they can sometimes be too quick to affirm others or provide unwarranted praise, leaving them to be potentially dismissed or perceived as naïve or insincere.',
+            'GT': 'The Assertive Driver - People with this pairing derive joy and energy from getting things done, as well as rallying others to get things done with them. They don\'t mind blowing through obstacles and are even comfortable ignoring social protocols from time to time when it is required to push something through to completion. They are people of high conviction and standards. Understandably, they can sometimes be seen as pushy, and are often impatient with too much planning and brainstorming, preferring to get right to work.',
+            'ET': 'The Loyal Finisher - People with this pairing derive joy and energy from completing tasks and responding to the needs of others in the pursuit of getting things done. They are quick to answer the call to action, equally valuing responsiveness and reliability. They are low-maintenance contributors who hold themselves accountable for delivering on their promises. They have a hard time saying \'no\' to requests and find themselves over-committed and prone to burn-out and lack of appreciation.'
+        };
+
+        const pairingIcons = {
+            'WI': 'fa-lightbulb',
+            'WD': 'fa-comments',
+            'WG': 'fa-bullhorn',
+            'WE': 'fa-hands-helping',
+            'WT': 'fa-tasks',
+            'ID': 'fa-brain',
+            'IG': 'fa-rocket',
+            'IE': 'fa-puzzle-piece',
+            'IT': 'fa-drafting-compass',
+            'DG': 'fa-bolt',
+            'DE': 'fa-users',
+            'DT': 'fa-check-circle',
+            'GE': 'fa-star',
+            'GT': 'fa-flag',
+            'ET': 'fa-check-double'
+        };
+
+        let currentPage = 0;
+        let responses = {};
+        let isDebugMode = false;
+
+        function startQuiz() {
+            // Check for debug mode
+            const urlParams = new URLSearchParams(window.location.search);
+            isDebugMode = urlParams.get('debug') === '1';
+            if (isDebugMode) {
+                document.getElementById('debug-panel').classList.remove('hidden');
+            }
+
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.remove('hidden');
+            showQuestions();
+        }
+
+        function showQuestions() {
+            const container = document.querySelector('.questions-table tbody');
+            container.innerHTML = '';
+            
+            const startIdx = currentPage * 6 + 1;
+            const endIdx = Math.min(startIdx + 5, 42);
+            
+            for (let i = startIdx; i <= endIdx; i++) {
+                const question = questions[i];
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="question-cell" colspan="3">
+                        <strong>Question ${i}:</strong> ${question[0]}
+                    </td>
+                `;
+                container.appendChild(row);
+                
+                const responseRow = document.createElement('tr');
+                responseRow.innerHTML = `
+                    <td class="response-cell">
+                        <button onclick="answerQuestion(${i}, 'Oh yeah, definitely')" 
+                            class="${responses[i] === 'Oh yeah, definitely' ? 'selected' : ''}">
+                            Oh yeah, definitely
+                        </button>
+                    </td>
+                    <td class="response-cell">
+                        <button onclick="answerQuestion(${i}, 'Sometimes/ somewhat')"
+                            class="${responses[i] === 'Sometimes/ somewhat' ? 'selected' : ''}">
+                            Sometimes/ somewhat
+                        </button>
+                    </td>
+                    <td class="response-cell">
+                        <button onclick="answerQuestion(${i}, 'Not really')"
+                            class="${responses[i] === 'Not really' ? 'selected' : ''}">
+                            Not really
+                        </button>
+                    </td>
+                `;
+                container.appendChild(responseRow);
+            }
+
+            // Update navigation buttons
+            document.getElementById('prev-button').classList.toggle('hidden', currentPage === 0);
+            document.getElementById('next-button').textContent = currentPage === 6 ? 'Finish' : 'Next';
+            
+            // Update progress bar
+            document.getElementById('progress').style.width = `${(endIdx / 42) * 100}%`;
+            
+            if (isDebugMode) {
+                updateDebugScores();
+            }
+        }
+
+        function answerQuestion(questionNum, value) {
+            responses[questionNum] = value;
+            showQuestions(); // Refresh to update selected state
+        }
+
+        function previousPage() {
+            if (currentPage > 0) {
+                currentPage--;
+                showQuestions();
+            }
+        }
+
+        function nextPage() {
+            if (currentPage < 6) {
+                currentPage++;
+                if (currentPage === 7) {
+                    showCalculatingScreen();
+                } else {
+                    showQuestions();
+                }
+            }
+        }
+
+        function showCalculatingScreen() {
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('calculating-screen').classList.remove('hidden');
+            
+            // Show calculating animation for 2 seconds
+            setTimeout(() => {
+                calculateResults();
+            }, 2000);
+        }
+
+        function updateDebugScores() {
+            const scores = calculateScores();
+            const debugDiv = document.getElementById('debug-scores');
+            debugDiv.innerHTML = Object.entries(scores)
+                .sort(([,a], [,b]) => b - a)
+                .map(([type, score]) => `${geniusTypes[type]}: ${score}`)
+                .join('<br>');
+        }
+
+        function autofillQuestions() {
+            // Fill all questions with random responses
+            const responseOptions = ["Oh yeah, definitely", "Sometimes/ somewhat", "Not really"];
+            for (let i = 1; i <= 42; i++) {
+                responses[i] = responseOptions[Math.floor(Math.random() * 3)];
+            }
+            // Jump to last page
+            currentPage = 6;
+            showQuestions();
+            // Calculate results immediately
+            calculateResults();
+        }
+
+        function calculateScores() {
+            const scores = {"W": 0, "I": 0, "D": 0, "G": 0, "E": 0, "T": 0};
+            const scoringWeights = {
+                "Oh yeah, definitely": 2,
+                "Sometimes/ somewhat": 1,
+                "tiebreak": 0.5,
+                "Not really": 0
+            };
+
+            // First pass: calculate initial scores
+            for (const response in responses) {
+                const category = questions[response][1];
+                const value = responses[response];
+                scores[category] += scoringWeights[value];
+            }
+
+            // Second pass: check for ties and apply tiebreaker
+            const sortedScores = Object.entries(scores).sort(([,a], [,b]) => b - a);
+            
+            // Check for ties between adjacent scores
+            for (let i = 0; i < sortedScores.length - 1; i++) {
+                if (sortedScores[i][1] === sortedScores[i + 1][1]) {
+                    // Find questions for both categories
+                    const cat1 = sortedScores[i][0];
+                    const cat2 = sortedScores[i + 1][0];
+                    
+                    // Count "Oh yeah, definitely" responses for each category
+                    let cat1Count = 0;
+                    let cat2Count = 0;
+                    
+                    for (const response in responses) {
+                        const category = questions[response][1];
+                        const value = responses[response];
+                        if (category === cat1 && value === "Oh yeah, definitely") cat1Count++;
+                        if (category === cat2 && value === "Oh yeah, definitely") cat2Count++;
+                    }
+                    
+                    // Apply tiebreaker
+                    if (cat1Count > cat2Count) {
+                        scores[cat1] += scoringWeights["tiebreak"];
+                    } else if (cat2Count > cat1Count) {
+                        scores[cat2] += scoringWeights["tiebreak"];
+                    }
+                }
+            }
+
+            return scores;
+        }
+
+        function calculateResults() {
+            const scores = calculateScores();
+            const sortedCategories = Object.entries(scores)
+                .sort(([,a], [,b]) => b - a);
+
+            const topTwo = sortedCategories.slice(0, 2);
+            const middleTwo = sortedCategories.slice(2, 4);
+            const leastTwo = sortedCategories.slice(4, 6);
+
+            // Get the pairing codes
+            const topPair = [topTwo[0][0], topTwo[1][0]].sort().join('');
+            const middlePair = [middleTwo[0][0], middleTwo[1][0]].sort().join('');
+            const leastPair = [leastTwo[0][0], leastTwo[1][0]].sort().join('');
+
+            // Get the pairing description and icon
+            const topPairDesc = pairingDescriptions[topPair] || pairingDescriptions[topPair.split('').reverse().join('')];
+            const topPairIcon = pairingIcons[topPair] || pairingIcons[topPair.split('').reverse().join('')];
+            const [title, description] = topPairDesc.split(' - ');
+
+            // Display results with descriptions and icons
+            document.getElementById('top-two-title').innerHTML = `<i class="fas ${topPairIcon}"></i> ${title}`;
+            document.getElementById('top-two-desc').textContent = description;
+            document.getElementById('top-two').textContent = 
+                `${geniusTypes[topTwo[0][0]]} & ${geniusTypes[topTwo[1][0]]}`;
+            document.getElementById('top-gear-1').textContent = topTwo[0][0];
+            document.getElementById('top-gear-2').textContent = topTwo[1][0];
+
+            document.getElementById('middle-two').textContent = 
+                `${geniusTypes[middleTwo[0][0]]} & ${geniusTypes[middleTwo[1][0]]}`;
+            document.getElementById('middle-two-desc').textContent = '';
+            document.getElementById('middle-gear-1').textContent = middleTwo[0][0];
+            document.getElementById('middle-gear-2').textContent = middleTwo[1][0];
+
+            document.getElementById('least-two').textContent = 
+                `${geniusTypes[leastTwo[0][0]]} & ${geniusTypes[leastTwo[1][0]]}`;
+            document.getElementById('least-two-desc').textContent = '';
+            document.getElementById('least-gear-1').textContent = leastTwo[0][0];
+            document.getElementById('least-gear-2').textContent = leastTwo[1][0];
+
+            // Save results to localStorage
+            const results = {
+                date: new Date().toISOString(),
+                scores: scores,
+                topTwo: topTwo.map(([type]) => type).join(''),
+                middleTwo: middleTwo.map(([type]) => type).join(''),
+                leastTwo: leastTwo.map(([type]) => type).join('')
+            };
+            localStorage.setItem('workingGeniusResults', JSON.stringify(results));
+
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('calculating-screen').classList.add('hidden');
+            document.getElementById('results-screen').classList.remove('hidden');
+        }
+
+        function restartQuiz() {
+            currentPage = 0;
+            responses = {};
+            document.getElementById('results-screen').classList.add('hidden');
+            document.getElementById('start-screen').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html> 
