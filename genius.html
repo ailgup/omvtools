@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Working Genius Quiz</title>
-    <link rel="stylesheet" href="genius-styles.css">
+    <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
@@ -310,7 +310,23 @@
         }
 
         function nextPage() {
-            if (currentPage < 6) {
+            // Check if all questions on current page are answered
+            const currentQuestions = document.querySelectorAll(`.page[data-page="${currentPage}"] .question`);
+            let allAnswered = true;
+            
+            currentQuestions.forEach(question => {
+                const questionId = question.getAttribute('data-question');
+                if (!responses[questionId]) {
+                    allAnswered = false;
+                }
+            });
+
+            if (!allAnswered) {
+                alert('Please answer all questions on this page before continuing.');
+                return;
+            }
+
+            if (currentPage <= 6) {
                 currentPage++;
                 if (currentPage === 7) {
                     showCalculatingScreen();
