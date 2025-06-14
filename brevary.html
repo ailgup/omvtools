@@ -75,7 +75,8 @@
       alert('Error scraping iBreviary: ' + err.message);
     }
   }
-function formatBreviaryHTMLtoMarkdown(htmlString) {
+
+  function formatBreviaryHTMLtoMarkdown(htmlString) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlString, 'text/html');
 
@@ -129,31 +130,61 @@ function formatBreviaryHTMLtoMarkdown(htmlString) {
         .trim();
 
     return markdown;
-}
+  }
 
+  function splitIntoBookletPages(lines, pages = 4) {
+    // Split lines into 4 roughly equal parts
+    const perPage = Math.ceil(lines.length / pages);
+    const result = [];
+    for (let i = 0; i < pages; i++) {
+      result.push(lines.slice(i * perPage, (i + 1) * perPage));
+    }
+    // Pad with empty lines if needed
+    for (let i = 0; i < pages; i++) {
+      while (result[i].length < perPage) result[i].push("");
+    }
+    return result;
+  }
+
+  function renderBookletPage(doc, leftLines, rightLines, options = {}) {
+    const { margin = 0.5, lineHeight = 0.22, fontSize = 12 } = options;
+    const pageWidth = 11, pageHeight = 8.5; // Letter landscape
+    const colWidth = (pageWidth - 2 * margin) / 2;
+    const maxLines = Math.max(leftLines.length, rightLines.length);
+
+    doc.setFontSize(fontSize);
+    // Left column (booklet page)
+    let xL = margin, yL = margin;
+    for (let line of leftLines) {
+      doc.text(line, xL, yL, { maxWidth: colWidth - 0.2 });
+      yL += lineHeight;
+    }
+    // Right column (booklet page)
+    let xR = margin + colWidth, yR = margin;
+    for (let line of rightLines) {
+      doc.text(line, xR, yR, { maxWidth: colWidth - 0.2 });
+      yR += lineHeight;
+    }
+  }
 
   function updatePreview() {
-    const doc = new jsPDF({ format: 'letter', unit: 'in' });
+    const doc = new jsPDF({ format: 'letter', orientation: 'landscape', unit: 'in' });
     const text = markdownEl.value;
     const html = marked.parse(text);
 
     // Create temp div to render HTML
     const tempDiv = document.createElement("div");
     tempDiv.innerHTML = html;
-    const lines = tempDiv.innerText.split("\n");
+    const lines = tempDiv.innerText.split("\n").map(l => l.trimEnd());
 
-    const margin = 0.5, lineHeight = 0.25;
-    let x = margin, y = margin;
+    // Split into 4 booklet pages
+    const [p1, p2, p3, p4] = splitIntoBookletPages(lines, 4);
 
-    doc.setFontSize(12);
-    for (let line of lines) {
-      if (y > 10.5) {
-        doc.addPage();
-        y = margin;
-      }
-      doc.text(line, x, y);
-      y += lineHeight;
-    }
+    // Sheet 1: left=4, right=1
+    renderBookletPage(doc, p4, p1);
+    doc.addPage();
+    // Sheet 2: left=2, right=3
+    renderBookletPage(doc, p2, p3);
 
     const blob = doc.output("blob");
     const url = URL.createObjectURL(blob);
@@ -161,26 +192,19 @@ function formatBreviaryHTMLtoMarkdown(htmlString) {
   }
 
   function downloadPDF() {
-    const doc = new jsPDF({ format: 'letter', unit: 'in' });
+    const doc = new jsPDF({ format: 'letter', orientation: 'landscape', unit: 'in' });
     const text = markdownEl.value;
     const html = marked.parse(text);
 
     const tempDiv = document.createElement("div");
     tempDiv.innerHTML = html;
-    const lines = tempDiv.innerText.split("\n");
+    const lines = tempDiv.innerText.split("\n").map(l => l.trimEnd());
 
-    const margin = 0.5, lineHeight = 0.25;
-    let x = margin, y = margin;
+    const [p1, p2, p3, p4] = splitIntoBookletPages(lines, 4);
 
-    doc.setFontSize(12);
-    for (let line of lines) {
-      if (y > 10.5) {
-        doc.addPage();
-        y = margin;
-      }
-      doc.text(line, x, y);
-      y += lineHeight;
-    }
+    renderBookletPage(doc, p4, p1);
+    doc.addPage();
+    renderBookletPage(doc, p2, p3);
 
     doc.save("liturgy-booklet.pdf");
   }
