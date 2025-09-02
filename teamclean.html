@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Scheduler</title>
+    <style>
+table, td, th {
+  border: 1px solid;
+  border-collapse: collapse;
+}
+/* Simple bar chart styling */
+.chart {
+  width: 100%;
+  max-width: 800px;
+  margin-top: 10px;
+}
+.chart-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+}
+.chart-label {
+  width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chart-bar {
+  height: 22px;
+  flex: 1;
+  background: #f0f0f0;
+  position: relative;
+}
+.chart-bar > div {
+  height: 100%;
+}
+.chart-bar span {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+}
+/* Remove button styling */
+.remove-job {
+  background: #ff4444;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  padding: 5px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-left: 5px;
+}
+.remove-job:hover {
+  background: #cc0000;
+}
+.job-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+</style>
+  </head>
+
+  <body>
+    <h1>OLG Team Clean Scheduler🧹</h1>
+    <form id="jobForm">
+      <div id="jobsContainer">
+        <!-- Initial job row -->
+        <div class="job-row">
+          <input type="text" class="job-name" placeholder="Job Name" value="Vacuum Ipswich">
+          <input type="number" class="job-frequency" placeholder="Frequency (per week)" value="1">
+          <input type="number" class="job-mins" placeholder="Minutes" value="25">
+          <button type="button" class="remove-job" title="Remove job">❌</button>
+        </div>
+        <div class="job-row">
+          <input type="text" class="job-name" placeholder="Job Name" value="Mop Ipswich">
+          <input type="number" class="job-frequency" placeholder="Frequency (per week)" value="1">
+          <input type="number" class="job-mins" placeholder="Minutes" value="21">
+          <button type="button" class="remove-job" title="Remove job">❌</button>
+        </div>
+        <div class="job-row">
+          <input type="text" class="job-name" placeholder="Job Name" value="Ipswich Bathrooms">
+          <input type="number" class="job-frequency" placeholder="Frequency (per week)" value="1">
+          <input type="number" class="job-mins" placeholder="Minutes" value="31">
+          <button type="button" class="remove-job" title="Remove job">❌</button>
+        </div>
+        <div class="job-row">
+          <input type="text" class="job-name" placeholder="Job Name" value="Sacristy + Dusting">
+          <input type="number" class="job-frequency" placeholder="Frequency (per week)" value="1">
+          <input type="number" class="job-mins" placeholder="Minutes" value="9">
+          <button type="button" class="remove-job" title="Remove job">❌</button>
+        </div>
+        <div class="job-row">
+          <input type="text" class="job-name" placeholder="Job Name" value="Vacuum Carpets, Sacristy + Dusting">
+          <input type="number" class="job-frequency" placeholder="Frequency (per week)" value="1">
+          <input type="number" class="job-mins" placeholder="Minutes" value="20">
+          <button type="button" class="remove-job" title="Remove job">❌</button>
+        </div>
+        <div class="job-row">
+          <input type="text" class="job-name" placeholder="Job Name" value="Vacuum Boylston+Wgt Rm">
+          <input type="number" class="job-frequency" placeholder="Frequency (per week)" value="1">
+          <input type="number" class="job-mins" placeholder="Minutes" value="30">
+          <button type="button" class="remove-job" title="Remove job">❌</button>
+        </div>
+        <div class="job-row">
+          <input type="text" class="job-name" placeholder="Job Name" value="Mop Boylston+Wgt Rm">
+          <input type="number" class="job-frequency" placeholder="Frequency (per week)" value="1">
+          <input type="number" class="job-mins" placeholder="Minutes" value="25">
+          <button type="button" class="remove-job" title="Remove job">❌</button>
+        </div>
+      </div>
+
+      <label for="numWorkers">Number of Workers:</label>
+      <input type="number" id="numWorkers" placeholder="Enter number of workers" value="6">
+
+      <label for="numWeeks">Number of Weeks:</label>
+      <input type="number" id="numWeeks" placeholder="Enter number of weeks" value="15">
+<br>
+      <label for="workerNames">Worker Names (comma or newline separated) 👥:</label>
+      <input id="workerNames" value="CP,MR,XS,ZS,SM,SN" placeholder="e.g. Alice, Bob, Charlie" rows="3" style="width: 500px"></textarea>
+<br>
+      <button type="button" id="addJob">➕ Add Job</button>
+      <button type="button" id="submitForm">▶️ Generate Schedule</button>
+      <button type="button" id="shareSchedule" style="display: none;">🔗 Share Schedule</button>
+    </form>
+
+    <div id="output"></div>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        const jobsContainer = document.getElementById('jobsContainer');
+        const addJobButton = document.getElementById('addJob');
+        const submitButton = document.getElementById('submitForm');
+        const shareButton = document.getElementById('shareSchedule');
+        const outputDiv = document.getElementById('output');
+
+        // Function to generate shareable URL
+        function generateShareableURL(scheduleData) {
+          const data = {
+            jobs: scheduleData.jobs,
+            numWorkers: scheduleData.numWorkers,
+            numWeeks: scheduleData.numWeeks,
+            workerNames: scheduleData.workerNames,
+            assignments: scheduleData.assignments,
+            zeroCount: scheduleData.zeroCount
+          };
+          
+          const encodedData = btoa(JSON.stringify(data));
+          const baseUrl = window.location.origin + window.location.pathname;
+          return `${baseUrl}?schedule=${encodedData}`;
+        }
+
+        // Function to load schedule from URL
+        function loadScheduleFromURL() {
+          const urlParams = new URLSearchParams(window.location.search);
+          const scheduleParam = urlParams.get('schedule');
+          
+          if (scheduleParam) {
+            try {
+              const data = JSON.parse(atob(scheduleParam));
+              
+              // Load job data
+              jobsContainer.innerHTML = '';
+              data.jobs.forEach(job => {
+                const jobRow = document.createElement('div');
+                jobRow.classList.add('job-row');
+                jobRow.innerHTML = `
+                  <input type="text" class="job-name" placeholder="Job Name" value="${job.name}">
+                  <input type="number" class="job-frequency" placeholder="Frequency (per week)" value="${job.frequency}">
+                  <input type="number" class="job-mins" placeholder="Minutes" value="${job.mins}">
+                  <button type="button" class="remove-job" title="Remove job">❌</button>
+                `;
+                jobsContainer.appendChild(jobRow);
+              });
+              
+              // Load other settings
+              document.getElementById('numWorkers').value = data.numWorkers;
+              document.getElementById('numWeeks').value = data.numWeeks;
+              document.getElementById('workerNames').value = data.workerNames.join(',');
+              
+              // Display the schedule
+              displaySchedule(data);
+              
+              return true;
+            } catch (e) {
+              console.error('Error loading schedule from URL:', e);
+            }
+          }
+          return false;
+        }
+
+        // Function to display schedule (extracted from submit button logic)
+        function displaySchedule(data) {
+          const { jobs: jobData, numWorkers, numWeeks, workerNames, assignments: workerAssignments, zeroCount } = data;
+          
+          // Create a table and display data
+          const table = document.createElement('table'); 
+          table.innerHTML = `
+                    <thead>
+                        <tr>
+                            <th>Week 📅</th>
+                            ${jobData.map(job => `<th>${job.name} 🧽</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${workerAssignments.map((assignments, index) => `
+                            <tr>
+                                <td>Week ${index + 1}</td>
+                                ${assignments.map((assignment, jobIndex) => {
+                                  const freq = jobData[jobIndex].frequency || 1;
+                                  const isActive = (index % freq) === 0;
+                                  return isActive
+                                    ? `<td data-worker="${assignment}">${workerNames[assignment - 1]}</td>`
+                                    : `<td></td>`;
+                                }).join('')}
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                `;
+          table.id = "workerAssignments";
+          
+          outputDiv.innerHTML = `
+                    <h2>Generated Schedule ✨</h2>
+                    <p>Workers: ${numWorkers} 👷‍♀️👷‍♂️ | Weeks: ${numWeeks} 📆 | Distribution quotient: ${zeroCount} ⚖️</p>
+                `;
+
+          outputDiv.appendChild(table);
+
+          // Apply colors
+          const colors = ['white','#ffb3ba', '#bae1ff', '#ffffba', '#baffc9', '#D2C4F4','#ffd6a5','#caffbf','#9bf6ff','#a0c4ff','#bdb2ff','#ffc6ff','grey'];
+          const tablee = document.getElementById('workerAssignments');
+
+          for (let i = 0; i < tablee.rows.length; i++) {
+              const row = tablee.rows[i];
+              for (let j = 0; j < row.cells.length; j++) {
+                  const cell = row.cells[j];
+                  const attrVal = cell.getAttribute('data-worker');
+                  const cellValue = attrVal ? parseInt(attrVal) : NaN;
+
+                  if (!isNaN(cellValue) && cellValue >= 0 && cellValue < colors.length) {
+                      cell.style.backgroundColor = colors[cellValue];
+                  }
+              }
+          }
+
+          // Calculate and display worker minutes
+          const workerMinutesTable = document.createElement('table');
+          const workerMinutesData = Array.from({ length: numWorkers }, () => 0);
+
+          workerAssignments.forEach((assignments, weekIndex) => {
+            assignments.forEach((worker, jobIndex) => {
+              const mins = jobData[jobIndex].mins;
+              const freq = jobData[jobIndex].frequency || 1;
+              if ((weekIndex % freq) === 0) {
+                workerMinutesData[worker - 1] += mins;
+              }
+            });
+          });
+
+          workerMinutesTable.innerHTML = `
+        <thead>
+            <tr>
+                <th>Worker 👤</th>
+                <th>Total Minutes Worked 🕒</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${workerMinutesData.map((minutes, index) => `
+                <tr>
+                    <td>${workerNames[index]}</td>
+                    <td>${minutes}</td>
+                </tr>
+            `).join('')}
+        </tbody>
+    `;
+
+          outputDiv.appendChild(document.createElement('hr')); 
+          outputDiv.appendChild(workerMinutesTable);
+
+          // Compute standard deviation
+          const meanMinutes = workerMinutesData.reduce((a,b) => a + b, 0) / workerMinutesData.length;
+          const variance = workerMinutesData.reduce((a,b) => a + Math.pow(b - meanMinutes, 2), 0) / workerMinutesData.length;
+          const stdDeviation = Math.sqrt(variance);
+
+          const statsP = document.createElement('p');
+          statsP.textContent = `Std deviation of minutes: ${stdDeviation.toFixed(2)} 🧮`;
+          outputDiv.appendChild(statsP);
+
+          // Bar chart
+          const maxMinutes = Math.max(1, ...workerMinutesData);
+          const chart = document.createElement('div');
+          chart.className = 'chart';
+          chart.innerHTML = `
+            ${workerMinutesData.map((minutes, idx) => {
+              const pct = Math.round((minutes / maxMinutes) * 100);
+              const colorIdx = (idx + 1);
+              return `
+                <div class="chart-row">
+                  <div class="chart-label">${workerNames[idx]}</div>
+                  <div class="chart-bar">
+                    <div style="width:${pct}%; background-color:${colors[colorIdx]}"></div>
+                    <span>${minutes} min</span>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          `;
+          outputDiv.appendChild(chart);
+
+          // Worker-job assignments table
+          const workerJobCounts = Array.from({ length: numWorkers }, () => Array(jobData.length).fill(0));
+
+          workerAssignments.forEach((assignments, weekIndex) => {
+            assignments.forEach((worker, jobIndex) => {
+              const freq = jobData[jobIndex].frequency || 1;
+              if ((weekIndex % freq) === 0) {
+                workerJobCounts[worker - 1][jobIndex]++;
+              }
+            });
+          });
+
+          const workerJobTable = document.createElement('table'); 
+          workerJobTable.innerHTML = `
+    <thead>
+        <tr>
+            <th>👥</th>
+            ${jobData.map(job => `<th>${job.name}</th>`).join('')}
+        </tr>
+    </thead>
+    <tbody>
+        ${workerJobCounts.map((workerCounts, workerIndex) => `
+            <tr>
+                <th>${workerNames[workerIndex]}</th>
+                ${workerCounts.map(count => `<td>${count}</td>`).join('')}
+            </tr>
+        `).join('')}
+    </tbody>
+`;
+
+          outputDiv.appendChild(document.createElement('hr')); 
+          outputDiv.appendChild(workerJobTable);
+          
+          // Show share button
+          shareButton.style.display = 'inline-block';
+        }
+
+        addJobButton.addEventListener('click', function() {
+          // Create a new job row
+          const newJobRow = document.createElement('div');
+          newJobRow.classList.add('job-row');
+          newJobRow.innerHTML = `
+                    <input type="text" class="job-name" placeholder="Job Name">
+                    <input type="number" class="job-frequency" placeholder="Frequency (per week)">
+                    <input type="number" class="job-mins" placeholder="Minutes">
+                    <button type="button" class="remove-job" title="Remove job">❌</button>
+                `;
+
+          jobsContainer.appendChild(newJobRow);
+        });
+
+        // Add event listener for remove buttons (using event delegation)
+        jobsContainer.addEventListener('click', function(e) {
+          if (e.target.classList.contains('remove-job')) {
+            e.target.closest('.job-row').remove();
+          }
+        });
+
+        // Add event listener for share button
+        shareButton.addEventListener('click', function() {
+          const url = generateShareableURL(window.currentScheduleData);
+          navigator.clipboard.writeText(url).then(() => {
+            alert('Schedule URL copied to clipboard! Share this link to let others view your schedule.');
+          }).catch(() => {
+            // Fallback for browsers that don't support clipboard API
+            const textArea = document.createElement('textarea');
+            textArea.value = url;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            alert('Schedule URL copied to clipboard! Share this link to let others view your schedule.');
+          });
+        });
+
+        // Try to load schedule from URL on page load
+        if (!loadScheduleFromURL()) {
+          // If no schedule loaded from URL, hide share button initially
+          shareButton.style.display = 'none';
+        }
+
+        submitButton.addEventListener('click', function() {
+            // Get the number of workers and weeks
+            const numWorkers = document.getElementById('numWorkers').value;
+            const numWeeks = document.getElementById('numWeeks').value;
+            const rawNames = (document.getElementById('workerNames').value || '').split(/[\,\n]+/).map(s => s.trim()).filter(Boolean);
+            const workerNames = Array.from({ length: numWorkers }, (_, i) => rawNames[i] || `Worker ${i + 1}`);
+
+            // Get all job rows
+            const jobRows = document.querySelectorAll('.job-row');
+
+            // Prepare data
+            const jobData = [];
+            jobRows.forEach(row => {
+              const name = row.querySelector('.job-name').value;
+              const frequencyRaw = row.querySelector('.job-frequency').value;
+              const frequency = Math.max(1, parseInt(frequencyRaw || '1'));
+              const mins = parseInt(row.querySelector('.job-mins').value);
+              jobData.push({
+                name,
+                frequency,
+                mins
+              });
+            });
+
+            // Randomly assign workers to jobs
+            let lowestZeroesAssignments = [];
+            let zeroCount = Number.MAX_SAFE_INTEGER;
+            const totalMinutes = jobData.reduce((acc, job) => acc + parseInt(job.mins), 0);
+            const targetMinutesPerWorkerPerWeek = totalMinutes / (numWorkers * numWeeks);
+            const workerMinutes = Array.from({ length: numWorkers }, () => 0);
+            const NUM_ROUNDS = 1000;
+            
+            for (let rounds = NUM_ROUNDS; rounds > 0; rounds--) {
+              const shuffleArray = (array) => {
+                for (let i = array.length - 1; i > 0; i--) {
+                  const j = Math.floor(Math.random() * (i + 1));
+                  [array[i], array[j]] = [array[j], array[i]];
+                }
+              };
+
+              const availableWorkers = Array.from({ length: numWorkers }, (_, i) => i + 1);
+              shuffleArray(availableWorkers);
+              const workerAssignments = [];
+
+              for (let week = 1; week <= numWeeks; week++) {
+                const assignments = [];
+                jobData.forEach((job, index) => {
+                  shuffleArray(availableWorkers);
+                  let assignedWorker;
+                  let minDifference = Number.MAX_SAFE_INTEGER;
+
+                  availableWorkers.forEach(worker => {
+                    const workerTotalMinutes = workerMinutes[worker - 1] + job.mins;
+                    const difference = Math.abs(workerTotalMinutes - targetMinutesPerWorkerPerWeek);
+
+                    if (difference < minDifference) {
+                      assignedWorker = worker;
+                      minDifference = difference;
+                    }
+                  });
+
+                  assignments.push(assignedWorker);
+                  workerMinutes[assignedWorker - 1] += job.mins;
+                });
+
+                workerAssignments.push(assignments);
+
+                if (availableWorkers.length === 0) {
+                  availableWorkers.push(...Array.from({ length: numWorkers }, (_, i) => i + 1));
+                  shuffleArray(availableWorkers);
+                }
+              }
+
+              const workerJobCounts1 = Array.from({ length: numWorkers }, () => Array(jobData.length).fill(0));
+              let zeroes = 0;
+              workerAssignments.forEach((assignments) => {
+                assignments.forEach((worker, jobIndex) => {
+                  workerJobCounts1[worker - 1][jobIndex]++;
+                });
+              });
+              workerJobCounts1.forEach((worker) => {
+                  zeroes += Math.max(...worker) - Math.min(...worker);
+              });
+              
+              if (zeroes < zeroCount) {
+                zeroCount = zeroes;
+                lowestZeroesAssignments = workerAssignments;
+                if (zeroCount == 0){
+                  rounds = 0;
+                }
+              }
+            }
+            
+            const workerAssignments = lowestZeroesAssignments;
+
+            // Store schedule data for sharing
+            window.currentScheduleData = {
+              jobs: jobData,
+              numWorkers: parseInt(numWorkers),
+              numWeeks: parseInt(numWeeks),
+              workerNames: workerNames,
+              assignments: workerAssignments,
+              zeroCount: zeroCount
+            };
+
+            // Display the schedule using the shared function
+            displaySchedule(window.currentScheduleData);
+        });
+      });
+
+    </script>
+   </body>
+
+</html>
