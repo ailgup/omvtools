@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OMV Tools</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --bg-soft: #111827;
+      --card: #0b1220;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --brand: #60a5fa;
+      --brand-2: #34d399;
+      --ring: rgba(96,165,250,0.5);
+      --shadow: 0 10px 30px rgba(0,0,0,0.35);
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji';
+      color: var(--text);
+      background: radial-gradient(1200px 800px at 20% -10%, rgba(56,189,248,0.08), transparent),
+                 radial-gradient(1000px 700px at 100% 0%, rgba(34,197,94,0.07), transparent),
+                 linear-gradient(180deg, #0b1020 0%, #0a0f1e 100%);
+    }
+
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: saturate(160%) blur(10px);
+      background: linear-gradient(180deg, rgba(2,6,23,0.8), rgba(2,6,23,0.4));
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .nav-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+    .brand i { color: var(--brand); }
+
+    .main {
+      max-width: 1200px;
+      margin: 32px auto;
+      padding: 0 20px 40px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 24px;
+      align-items: center;
+      margin-bottom: 28px;
+    }
+    .hero h1 {
+      margin: 0 0 10px 0;
+      font-size: 34px;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+    }
+    .hero p { color: var(--muted); margin: 0; }
+
+    .search {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 12px 14px;
+      box-shadow: var(--shadow);
+    }
+    .search i { color: var(--muted); }
+    .search input {
+      flex: 1;
+      background: transparent;
+      border: 0;
+      outline: none;
+      color: var(--text);
+      font-size: 15px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 16px;
+    }
+    .card {
+      grid-column: span 6;
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius);
+      padding: 18px;
+      position: relative;
+      overflow: hidden;
+      transition: transform .18s ease, border-color .18s ease, background .18s ease;
+      box-shadow: var(--shadow);
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(96,165,250,0.35);
+      background: linear-gradient(180deg, rgba(96,165,250,0.08), rgba(255,255,255,0.02));
+    }
+    .card .pill {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      font-size: 12px;
+      color: #0b1220;
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-weight: 700;
+      letter-spacing: .3px;
+    }
+    .card h3 {
+      margin: 2px 0 8px 0;
+      font-size: 18px;
+      letter-spacing: .1px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .card h3 i { color: var(--brand); }
+    .card p {
+      margin: 0 0 14px 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 40px;
+    }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.12);
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 600;
+      background: rgba(255,255,255,0.04);
+      transition: background .15s ease, border-color .15s ease, transform .15s ease;
+    }
+    .btn:hover { background: rgba(96,165,250,0.12); border-color: var(--ring); transform: translateY(-1px); }
+    .btn.primary { background: linear-gradient(135deg, rgba(96,165,250,0.18), rgba(52,211,153,0.14)); border-color: rgba(255,255,255,0.16); }
+
+    .footer {
+      margin-top: 28px;
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+      opacity: .9;
+    }
+
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; gap: 12px; }
+      .card { grid-column: span 12; }
+    }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <div class="brand"><i class="fa-solid fa-church"></i> OMV Tools</div>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="hero">
+      <div>
+        <h1>OMV Tools, all in one place</h1>
+        <p>Jump into any utility below: liturgy scraping and booklet creation, necrology cards, working genius quiz, and a weekly team clean scheduler.</p>
+      </div>
+      <div class="search">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input id="toolSearch" type="search" placeholder="Search tools… (e.g. booklet, quiz, necrology)" aria-label="Search tools">
+      </div>
+    </section>
+
+    <section class="grid" id="toolGrid">
+      <article class="card" data-keywords="breviary scraper markdown booklet vesper vespers">
+        <span class="pill">HTML → PDF</span>
+        <h3><i class="fa-solid fa-book-bible"></i> Breviary Booklet (basic)</h3>
+        <p>A minimal tool that scrapes iBreviary and lays out a 4-page landscape booklet directly from Markdown.</p>
+        <div class="actions">
+          <a class="btn primary" href="brevary.html"><i class="fa-solid fa-arrow-right"></i> Open</a>
+        </div>
+      </article>
+
+      <article class="card" data-keywords="liturgy hours editor booklet code mirror styling options html2canvas jspdf">
+        <span class="pill">Advanced</span>
+        <h3><i class="fa-solid fa-scroll"></i> Liturgy of the Hours App</h3>
+        <p>Full-featured editor and preview for iBreviary content with styling controls and booklet-ready PDF generation.</p>
+        <div class="actions">
+          <a class="btn primary" href="liturgy-app.html"><i class="fa-solid fa-arrow-right"></i> Open</a>
+          <a class="btn" href="README.md" target="_blank" rel="noopener"><i class="fa-regular fa-file-lines"></i> Docs</a>
+        </div>
+      </article>
+
+      <article class="card" data-keywords="genius working assessment quiz personality results">
+        <span class="pill">Quiz</span>
+        <h3><i class="fa-solid fa-lightbulb"></i> Working Genius Quiz</h3>
+        <p>Interactive 42-question assessment to reveal your top working genius pairings with clean, shareable results.</p>
+        <div class="actions">
+          <a class="btn primary" href="genius.html"><i class="fa-solid fa-arrow-right"></i> Open</a>
+          <a class="btn" href="genius-styles.css" target="_blank" rel="noopener"><i class="fa-solid fa-palette"></i> Styles</a>
+        </div>
+      </article>
+
+      <article class="card" data-keywords="necrology calendar ics pdf cards volumes names dates obituary memorial">
+        <span class="pill">Calendar</span>
+        <h3><i class="fa-solid fa-cross"></i> Necrology PDF Generator</h3>
+        <p>Pulls names and dates from an iCal feed and creates formatted two-up cards across four volumes, ready to print.</p>
+        <div class="actions">
+          <a class="btn primary" href="necrology.html"><i class="fa-solid fa-arrow-right"></i> Open</a>
+        </div>
+      </article>
+
+      <article class="card" data-keywords="scheduler team clean roster rotation duties workload minutes fairness share">
+        <span class="pill">Utility</span>
+        <h3><i class="fa-solid fa-broom"></i> Team Clean Scheduler</h3>
+        <p>Build a fair weekly job schedule with minute balancing, shareable links, color-coded tables and simple charts.</p>
+        <div class="actions">
+          <a class="btn primary" href="teamclean.html"><i class="fa-solid fa-arrow-right"></i> Open</a>
+        </div>
+      </article>
+    </section>
+
+    <p class="footer">Tip: Use the search box to quickly filter tools by name or features.</p>
+  </main>
+
+  <script>
+    (function() {
+      const input = document.getElementById('toolSearch');
+      const grid = document.getElementById('toolGrid');
+      const cards = Array.from(grid.querySelectorAll('.card'));
+
+      function normalize(s) { return (s || '').toLowerCase().trim(); }
+
+      input.addEventListener('input', function() {
+        const q = normalize(input.value);
+        if (!q) {
+          cards.forEach(c => c.style.display = 'block');
+          return;
+        }
+        cards.forEach(card => {
+          const text = normalize(card.innerText + ' ' + (card.getAttribute('data-keywords') || ''));
+          card.style.display = text.includes(q) ? 'block' : 'none';
+        });
+      });
+    })();
+  </script>
+</body>
+<\/html>
+
+
