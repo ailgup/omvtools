@@ -112,8 +112,7 @@
     }
 
     input[type="text"],
-    input[type="datetime-local"],
-    select {
+    input[type="datetime-local"] {
       width: 100%;
       padding: 0.55rem 0.65rem;
       font: inherit;
@@ -121,6 +120,22 @@
       border-radius: 6px;
       background: rgba(255, 255, 255, 0.08);
       color: inherit;
+    }
+
+    /* Solid light field so options aren’t light-on-light (OS dropdowns ignore body color). */
+    select {
+      width: 100%;
+      padding: 0.55rem 0.65rem;
+      font: inherit;
+      border: 1px solid rgba(127, 127, 127, 0.45);
+      border-radius: 6px;
+      background-color: #fff;
+      color: #111;
+    }
+
+    select option {
+      color: #111;
+      background-color: #fff;
     }
 
     input[type="color"] {
