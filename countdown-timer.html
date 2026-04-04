@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Countdown Timer</title>
+  <!-- Web fonts (EB Garamond and others); required for those faces to render -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;0,700;1,400&family=EB+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Lato:wght@400;700&family=Libre+Baskerville:wght@400;700&family=Merriweather:wght@400;700&family=Playfair+Display:wght@400;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* Base layout: full viewport, centered content */
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      min-height: 100dvh;
+      height: 100%;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: flex-start;
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: 0.45rem;
+      transition: background-color 0.35s ease, color 0.35s ease;
+    }
+
+    /* Fade panels for form vs timer */
+    .panel {
+      width: 100%;
+      opacity: 1;
+      transition: opacity 0.35s ease, visibility 0.35s ease;
+    }
+
+    #formPanel.panel {
+      max-width: 28rem;
+      margin-left: auto;
+      margin-right: auto;
+      align-self: center;
+    }
+
+    /* Timer uses full viewport width (minus body padding) */
+    #timerPanel.panel {
+      max-width: none;
+      width: 100%;
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 0;
+    }
+
+    .panel.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      position: absolute;
+      width: max-content;
+      max-width: 90vw;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: center;
+      min-height: 0;
+      flex: 1 1 auto;
+      align-self: stretch;
+      /* Fill viewport so the timer panel can use nearly all vertical space */
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+
+    h1 {
+      font-size: clamp(1.75rem, 5vw, 2.5rem);
+      font-weight: 600;
+      margin: 0 0 1.25rem;
+      text-align: center;
+      line-height: 1.2;
+    }
+
+    /* Form */
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      font-size: 0.9rem;
+    }
+
+    .label-optional {
+      font-weight: 400;
+      opacity: 0.72;
+    }
+
+    input[type="text"],
+    input[type="datetime-local"],
+    select {
+      width: 100%;
+      padding: 0.55rem 0.65rem;
+      font: inherit;
+      border: 1px solid rgba(127, 127, 127, 0.45);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      color: inherit;
+    }
+
+    input[type="color"] {
+      width: 100%;
+      height: 2.5rem;
+      padding: 0.2rem;
+      border: 1px solid rgba(127, 127, 127, 0.45);
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .row-colors {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    @media (max-width: 480px) {
+      .row-colors {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      margin-top: 0.25rem;
+    }
+
+    button {
+      font: inherit;
+      padding: 0.6rem 1.1rem;
+      border-radius: 6px;
+      border: 1px solid currentColor;
+      background: rgba(255, 255, 255, 0.12);
+      color: inherit;
+      cursor: pointer;
+      flex: 1;
+      min-width: 8rem;
+    }
+
+    button:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    button:focus-visible {
+      outline: 2px solid currentColor;
+      outline-offset: 2px;
+    }
+
+    /*
+     * Timer typography uses rem (and em) only — not vw/vh/vmin.
+     * Viewport units are tied to the layout viewport and typically do NOT grow
+     * with browser zoom; rem tracks the root font size and scales when zooming.
+     */
+    .timer-view {
+      text-align: center;
+      width: 100%;
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
+      padding: 0.65rem 0.85rem;
+    }
+
+    .timer-title {
+      font-size: 3rem;
+      font-weight: 700;
+      margin-bottom: 0.45rem;
+      word-break: break-word;
+      line-height: 1.08;
+      max-width: 100%;
+    }
+
+    .timer-subtitle {
+      font-size: 1.2rem;
+      font-weight: 400;
+      opacity: 0.82;
+      margin: 0 0 3rem;
+      line-height: 1.35;
+      word-break: break-word;
+      max-width: min(100%, 52rem);
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .timer-subtitle.is-empty {
+      display: none;
+    }
+
+    /* Optional header image — centered, capped so countdown stays visible */
+    .timer-image-wrap {
+      width: 100%;
+      max-width: min(100%, 52rem);
+      margin: 0 auto 0.85rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .timer-image-wrap.is-empty {
+      display: none;
+    }
+
+    .timer-image {
+      display: block;
+      margin: 0 auto;
+      max-width: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      max-height: 9rem;
+      border-radius: 0.35rem;
+    }
+
+    @media (min-width: 540px) {
+      .timer-image {
+        max-height: 11rem;
+      }
+    }
+
+    @media (min-width: 800px) {
+      .timer-image {
+        max-height: 13rem;
+      }
+    }
+
+    @media (min-width: 1200px) {
+      .timer-image {
+        max-height: 15rem;
+      }
+    }
+
+    .timer-digits {
+      line-height: 1.2;
+    }
+
+    .timer-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: center;
+      /* 1em = one digit height; size in rem so zoom scales digits */
+      font-size: 4.25rem;
+      gap: 0.12em 0.38em;
+      max-width: 100%;
+    }
+
+    .timer-seg {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 0.1em;
+    }
+
+    .timer-num {
+      font-size: 1em;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.03em;
+      line-height: 1;
+    }
+
+    .timer-unit {
+      font-size: 0.34em;
+      font-weight: 600;
+      opacity: 0.88;
+      text-transform: lowercase;
+      line-height: 1;
+    }
+
+    .timer-sep {
+      user-select: none;
+      opacity: 0.35;
+      font-size: 0.5em;
+      line-height: 1;
+      padding: 0 0.05em;
+    }
+
+    .timer-done {
+      font-size: 3.75rem;
+      font-weight: 700;
+      line-height: 1.15;
+      max-width: 100%;
+    }
+
+    @media (min-width: 380px) {
+      .timer-title {
+        font-size: 3.15rem;
+      }
+      .timer-subtitle {
+        font-size: 1.35rem;
+      }
+      .timer-row {
+        font-size: 5.25rem;
+      }
+      .timer-done {
+        font-size: 4.5rem;
+      }
+    }
+
+    @media (min-width: 540px) {
+      .timer-title {
+        font-size: 3.75rem;
+      }
+      .timer-subtitle {
+        font-size: 1.55rem;
+      }
+      .timer-row {
+        font-size: 6.75rem;
+      }
+      .timer-done {
+        font-size: 5.75rem;
+      }
+    }
+
+    @media (min-width: 800px) {
+      .timer-title {
+        font-size: 4.35rem;
+      }
+      .timer-subtitle {
+        font-size: 1.85rem;
+      }
+      .timer-row {
+        font-size: 8.5rem;
+      }
+      .timer-done {
+        font-size: 7rem;
+      }
+    }
+
+    @media (min-width: 1200px) {
+      .timer-title {
+        font-size: 5rem;
+      }
+      .timer-subtitle {
+        font-size: 2.1rem;
+      }
+      .timer-row {
+        font-size: 10.5rem;
+      }
+      .timer-done {
+        font-size: 8.5rem;
+      }
+    }
+
+    @media (min-width: 1600px) {
+      .timer-row {
+        font-size: 12.5rem;
+      }
+      .timer-done {
+        font-size: 10rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <!-- Setup form -->
+    <div id="formPanel" class="panel" role="region" aria-label="Timer setup">
+      <h1>Countdown Timer</h1>
+      <form id="timerForm" novalidate>
+        <label>
+          Event Time
+          <input type="datetime-local" id="fieldTime" name="time" required />
+        </label>
+        <label>
+          Title
+          <input type="text" id="fieldTitle" name="title" placeholder="e.g. New Year" />
+        </label>
+        <label>
+          Subtitle <span class="label-optional">(optional)</span>
+          <input type="text" id="fieldSubtitle" name="subtitle" placeholder="e.g. Ring in 2027" />
+        </label>
+        <label>
+          Top image URL <span class="label-optional">(optional)</span>
+          <input
+            type="url"
+            id="fieldImage"
+            name="image"
+            inputmode="url"
+            autocomplete="off"
+            placeholder="https://example.com/image.png"
+          />
+        </label>
+        <label>
+          Font
+          <select id="fieldFont" name="font">
+            <option value="Arial">Arial</option>
+            <option value="Verdana">Verdana</option>
+            <option value="Tahoma">Tahoma</option>
+            <option value="Trebuchet MS">Trebuchet MS</option>
+            <option value="Impact">Impact</option>
+            <option value="Lato">Lato</option>
+            <option value="Source Sans 3">Source Sans 3</option>
+            <option value="Times New Roman">Times New Roman</option>
+            <option value="Georgia">Georgia</option>
+            <option value="EB Garamond">EB Garamond</option>
+            <option value="Crimson Pro">Crimson Pro</option>
+            <option value="Merriweather">Merriweather</option>
+            <option value="Libre Baskerville">Libre Baskerville</option>
+            <option value="Playfair Display">Playfair Display</option>
+            <option value="Courier New">Courier New</option>
+          </select>
+        </label>
+        <div class="row-colors">
+          <label>
+            Background Color
+            <input type="color" id="fieldBg" name="bg" value="#1a1a2e" />
+          </label>
+          <label>
+            Text Color
+            <input type="color" id="fieldColor" name="color" value="#eaeaea" />
+          </label>
+        </div>
+        <div class="btn-row">
+          <button type="submit">Build Timer</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Countdown view -->
+    <div id="timerPanel" class="panel hidden" role="region" aria-live="polite" aria-label="Countdown">
+      <div class="timer-view">
+        <div id="timerImageWrap" class="timer-image-wrap is-empty" aria-hidden="true">
+          <img id="displayImage" class="timer-image" alt="" decoding="async" />
+        </div>
+        <div id="displayTitle" class="timer-title"></div>
+        <div id="displaySubtitle" class="timer-subtitle is-empty" aria-hidden="true"></div>
+        <div id="displayCountdown" class="timer-digits timer-row" aria-atomic="true"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // --- DOM ---
+      var formPanel = document.getElementById('formPanel');
+      var timerPanel = document.getElementById('timerPanel');
+      var form = document.getElementById('timerForm');
+      var fieldTime = document.getElementById('fieldTime');
+      var fieldTitle = document.getElementById('fieldTitle');
+      var fieldSubtitle = document.getElementById('fieldSubtitle');
+      var fieldImage = document.getElementById('fieldImage');
+      var fieldFont = document.getElementById('fieldFont');
+      var fieldBg = document.getElementById('fieldBg');
+      var fieldColor = document.getElementById('fieldColor');
+      var displayTitle = document.getElementById('displayTitle');
+      var displaySubtitle = document.getElementById('displaySubtitle');
+      var timerImageWrap = document.getElementById('timerImageWrap');
+      var displayImage = document.getElementById('displayImage');
+      var displayCountdown = document.getElementById('displayCountdown');
+
+      /** @type {number|null} */
+      var tickId = null;
+      /** @type {Date|null} */
+      var targetDate = null;
+
+      /**
+       * Parse datetime-local string as local wall time (not UTC).
+       * @param {string} str
+       * @returns {Date|null}
+       */
+      function parseLocalDateTime(str) {
+        if (!str || typeof str !== 'string') return null;
+        var parts = str.split('T');
+        var datePart = parts[0];
+        var timePart = parts[1] || '00:00';
+        var dp = datePart.split('-');
+        var tp = timePart.split(':');
+        var y = parseInt(dp[0], 10);
+        var m = parseInt(dp[1], 10);
+        var d = parseInt(dp[2], 10);
+        var hh = parseInt(tp[0], 10) || 0;
+        var mm = parseInt(tp[1], 10) || 0;
+        var ss = parseInt(tp[2], 10) || 0;
+        if (isNaN(y) || isNaN(m) || isNaN(d)) return null;
+        var dt = new Date(y, m - 1, d, hh, mm, ss);
+        return isNaN(dt.getTime()) ? null : dt;
+      }
+
+      /**
+       * Read timer config from URL query string.
+       * @returns {{ time: string|null, title: string, subtitle: string, image: string, font: string, bg: string, color: string }}
+       */
+      function readParamsFromUrl() {
+        var p = new URLSearchParams(window.location.search);
+        return {
+          time: p.get('time'),
+          title: p.get('title') || '',
+          subtitle: p.get('subtitle') || '',
+          image: p.get('image') || '',
+          font: p.get('font') || 'Arial',
+          bg: p.get('bg') || '#1a1a2e',
+          color: p.get('color') || '#eaeaea'
+        };
+      }
+
+      /**
+       * True if URL has a usable time parameter (and optionally other fields).
+       * @param {{ time: string|null }} cfg
+       */
+      function hasUrlTimer(cfg) {
+        return !!(cfg.time && parseLocalDateTime(cfg.time));
+      }
+
+      /**
+       * CSS font-family string for a given face (quoted when needed).
+       */
+      function fontFamilyStack(font) {
+        var q = /[\s'"\\,]/.test(font) ? '"' + font.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"' : font;
+        if (font === 'Courier New') {
+          return q + ', Courier, monospace';
+        }
+        if (
+          /^(Times New Roman|Georgia|EB Garamond|Crimson Pro|Merriweather|Libre Baskerville|Playfair Display)$/.test(
+            font
+          )
+        ) {
+          return q + ', Georgia, serif';
+        }
+        return q + ', Arial, sans-serif';
+      }
+
+      /**
+       * Apply font and colors to the document body.
+       */
+      function applyTheme(font, bg, color) {
+        document.body.style.fontFamily = fontFamilyStack(font);
+        document.body.style.backgroundColor = bg;
+        document.body.style.color = color;
+      }
+
+      /**
+       * Show or hide the timer subtitle line.
+       */
+      function applySubtitleDisplay(text) {
+        var t = text && String(text).trim();
+        if (t) {
+          displaySubtitle.textContent = t;
+          displaySubtitle.classList.remove('is-empty');
+          displaySubtitle.setAttribute('aria-hidden', 'false');
+        } else {
+          displaySubtitle.textContent = '';
+          displaySubtitle.classList.add('is-empty');
+          displaySubtitle.setAttribute('aria-hidden', 'true');
+        }
+      }
+
+      /**
+       * Resolve and allow only http(s) image URLs (blocks javascript:, data:, etc.).
+       * @param {string} raw
+       * @returns {string}
+       */
+      function safeHttpImageUrl(raw) {
+        var s = raw && String(raw).trim();
+        if (!s) return '';
+        try {
+          var abs = new URL(s, window.location.href);
+          if (abs.protocol !== 'http:' && abs.protocol !== 'https:') {
+            return '';
+          }
+          return abs.href;
+        } catch (err) {
+          return '';
+        }
+      }
+
+      /**
+       * Show or hide the optional top image.
+       */
+      function applyTimerImage(urlRaw) {
+        var href = safeHttpImageUrl(urlRaw);
+        displayImage.onload = null;
+        displayImage.onerror = null;
+        if (!href) {
+          displayImage.removeAttribute('src');
+          timerImageWrap.classList.add('is-empty');
+          timerImageWrap.setAttribute('aria-hidden', 'true');
+          return;
+        }
+        displayImage.onload = function () {
+          timerImageWrap.classList.remove('is-empty');
+          timerImageWrap.setAttribute('aria-hidden', 'false');
+        };
+        displayImage.onerror = function () {
+          displayImage.removeAttribute('src');
+          timerImageWrap.classList.add('is-empty');
+          timerImageWrap.setAttribute('aria-hidden', 'true');
+        };
+        displayImage.src = href;
+      }
+
+      /**
+       * Populate form fields from config object.
+       */
+      function fillForm(cfg) {
+        if (cfg.time) fieldTime.value = cfg.time;
+        fieldTitle.value = cfg.title;
+        fieldSubtitle.value = cfg.subtitle != null ? cfg.subtitle : '';
+        fieldImage.value = cfg.image != null ? cfg.image : '';
+        if (cfg.font) {
+          var opt = Array.prototype.find.call(fieldFont.options, function (o) {
+            return o.value === cfg.font;
+          });
+          fieldFont.value = opt ? cfg.font : fieldFont.options[0].value;
+        }
+        fieldBg.value = normalizeHexColor(cfg.bg, fieldBg.value);
+        fieldColor.value = normalizeHexColor(cfg.color, fieldColor.value);
+      }
+
+      /**
+       * Ensure a 7-char #RRGGBB for color inputs.
+       */
+      function normalizeHexColor(hex, fallback) {
+        if (!hex || typeof hex !== 'string') return fallback;
+        var h = hex.trim();
+        if (/^#[0-9A-Fa-f]{6}$/.test(h)) return h;
+        if (/^#[0-9A-Fa-f]{3}$/.test(h)) {
+          return (
+            '#' +
+            h[1] + h[1] +
+            h[2] + h[2] +
+            h[3] + h[3]
+          );
+        }
+        return fallback;
+      }
+
+      /**
+       * Build query string from current field values.
+       */
+      function buildQueryFromForm() {
+        var params = new URLSearchParams();
+        params.set('time', fieldTime.value);
+        params.set('title', fieldTitle.value);
+        var sub = fieldSubtitle.value.trim();
+        if (sub) {
+          params.set('subtitle', sub);
+        }
+        var imgHref = safeHttpImageUrl(fieldImage.value);
+        if (imgHref) {
+          params.set('image', imgHref);
+        }
+        params.set('font', fieldFont.value);
+        params.set('bg', fieldBg.value);
+        params.set('color', fieldColor.value);
+        return params.toString();
+      }
+
+      /**
+       * Update browser URL without reload.
+       */
+      function setUrlQuery(queryString) {
+        var url = window.location.pathname + (queryString ? '?' + queryString : '') + window.location.hash;
+        window.history.replaceState(null, '', url);
+      }
+
+      function showForm() {
+        stopTick();
+        targetDate = null;
+        formPanel.classList.remove('hidden');
+        timerPanel.classList.add('hidden');
+        displayCountdown.innerHTML = '';
+        displayCountdown.className = 'timer-digits timer-row';
+        applySubtitleDisplay('');
+        applyTimerImage('');
+      }
+
+      function showTimer() {
+        formPanel.classList.add('hidden');
+        timerPanel.classList.remove('hidden');
+      }
+
+      function stopTick() {
+        if (tickId !== null) {
+          clearInterval(tickId);
+          tickId = null;
+        }
+      }
+
+      /**
+       * Pad number to 2 digits.
+       */
+      function pad2(n) {
+        return n < 10 ? '0' + n : String(n);
+      }
+
+      /**
+       * One labeled segment (number + small unit letter).
+       */
+      function countdownSegment(numStr, unit) {
+        return (
+          '<span class="timer-seg">' +
+          '<span class="timer-num">' +
+          numStr +
+          '</span>' +
+          '<span class="timer-unit">' +
+          unit +
+          '</span>' +
+          '</span>'
+        );
+      }
+
+      /**
+       * Human-readable label for aria-live (e.g. "5 days, 2 hours, …").
+       */
+      function countdownAriaLabel(days, hours, minutes, seconds, showDays) {
+        var parts = [];
+        if (showDays) parts.push(days + (days === 1 ? ' day' : ' days'));
+        parts.push(hours + (hours === 1 ? ' hour' : ' hours'));
+        parts.push(minutes + (minutes === 1 ? ' minute' : ' minutes'));
+        parts.push(seconds + (seconds === 1 ? ' second' : ' seconds'));
+        return 'Time remaining: ' + parts.join(', ');
+      }
+
+      /**
+       * Render one frame of the countdown.
+       */
+      function renderTick() {
+        if (!targetDate) return;
+        var now = Date.now();
+        var diff = targetDate.getTime() - now;
+        var sec;
+        if (diff <= 0) {
+          stopTick();
+          sec = 0;
+        } else {
+          sec = Math.floor(diff / 1000);
+        }
+        var days = Math.floor(sec / 86400);
+        sec -= days * 86400;
+        var hours = Math.floor(sec / 3600);
+        sec -= hours * 3600;
+        var minutes = Math.floor(sec / 60);
+        sec -= minutes * 60;
+        var seconds = sec;
+
+        displayCountdown.className = 'timer-digits timer-row';
+        var showDays = days >= 1;
+        var segs = [];
+        if (showDays) {
+          segs.push(countdownSegment(String(days), 'd'));
+        }
+        segs.push(countdownSegment(pad2(hours), 'h'));
+        segs.push(countdownSegment(pad2(minutes), 'm'));
+        segs.push(countdownSegment(pad2(seconds), 's'));
+
+        displayCountdown.innerHTML = segs.join(
+          '<span class="timer-sep" aria-hidden="true">·</span>'
+        );
+        displayCountdown.setAttribute(
+          'aria-label',
+          countdownAriaLabel(days, hours, minutes, seconds, showDays)
+        );
+      }
+
+      /**
+       * Start from field values: validate, theme, URL, UI, interval.
+       */
+      function startFromForm() {
+        var dt = parseLocalDateTime(fieldTime.value);
+        if (!dt) {
+          fieldTime.focus();
+          return false;
+        }
+        targetDate = dt;
+        applyTheme(fieldFont.value, fieldBg.value, fieldColor.value);
+        setUrlQuery(buildQueryFromForm());
+        displayTitle.textContent = fieldTitle.value || 'Countdown';
+        applySubtitleDisplay(fieldSubtitle.value);
+        applyTimerImage(fieldImage.value);
+        showTimer();
+        renderTick();
+        stopTick();
+        tickId = window.setInterval(renderTick, 1000);
+        return true;
+      }
+
+      /**
+       * Start from URL params (already validated).
+       */
+      function startFromParams(cfg) {
+        targetDate = parseLocalDateTime(cfg.time);
+        if (!targetDate) return false;
+        fillForm(cfg);
+        applyTheme(cfg.font, cfg.bg, cfg.color);
+        displayTitle.textContent = cfg.title || 'Countdown';
+        applySubtitleDisplay(cfg.subtitle);
+        applyTimerImage(cfg.image);
+        showTimer();
+        renderTick();
+        stopTick();
+        tickId = window.setInterval(renderTick, 1000);
+        return true;
+      }
+
+      // --- Initial load: URL drives mode ---
+      function init() {
+        var cfg = readParamsFromUrl();
+        if (hasUrlTimer(cfg)) {
+          startFromParams(cfg);
+        } else {
+          applyTheme(fieldFont.value, fieldBg.value, fieldColor.value);
+          showForm();
+        }
+      }
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        startFromForm();
+      });
+
+      init();
+    })();
+  </script>
+</body>
+</html>
