@@ -836,6 +836,19 @@
       /** @type {Object<string, number>} */
       var volumes = {};
 
+      // iOS background audio is more reliable with native <audio> than Web Audio scheduling.
+      var isIOS = (function () {
+        var ua = navigator.userAgent || '';
+        var iOSDevice = /iPad|iPhone|iPod/.test(ua);
+        var iPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+        return iOSDevice || iPadOS;
+      })();
+
+      /** @type {Object<string, HTMLAudioElement>} */
+      var iosAudios = {};
+      /** @type {Object<string, number>} */
+      var iosFadeRafs = {};
+
       var audioReady = false;
       var saveTimer = null;
 
@@ -863,6 +876,9 @@
       var elToast = document.getElementById('toast');
 
       function getCtx() {
+        if (isIOS) {
+          throw new Error('Web Audio disabled in iOS mode');
+        }
         if (!ctx) {
           var AC = window.AudioContext || window.webkitAudioContext;
           if (!AC) {
@@ -881,16 +897,86 @@
         return getCtx().currentTime;
       }
 
+      function getMasterLinear() {
+        return Math.min(1, Math.max(0, parseInt(elMasterVol.value, 10) / 100));
+      }
+
       function linearRamp(gainNode, value, endTime) {
         gainNode.gain.cancelScheduledValues(now());
         gainNode.gain.setValueAtTime(gainNode.gain.value, now());
         gainNode.gain.linearRampToValueAtTime(value, endTime);
       }
 
+      function iosGetDef(id) {
+        for (var i = 0; i < TRACKS.length; i++) {
+          if (TRACKS[i].id === id) return TRACKS[i];
+        }
+        return null;
+      }
+
+      function iosGetAudio(id) {
+        if (iosAudios[id]) return iosAudios[id];
+        var def = iosGetDef(id);
+        if (!def) return null;
+        var a = new Audio();
+        a.src = def.file;
+        a.loop = true;
+        a.preload = 'none';
+        a.playsInline = true;
+        a.setAttribute('playsinline', 'true');
+        a.volume = 0;
+        iosAudios[id] = a;
+        return a;
+      }
+
+      function iosCancelFade(id) {
+        if (iosFadeRafs[id]) {
+          cancelAnimationFrame(iosFadeRafs[id]);
+          iosFadeRafs[id] = 0;
+        }
+      }
+
+      function iosFadeTo(id, target, durationSec, after) {
+        var a = iosGetAudio(id);
+        if (!a) {
+          if (after) after();
+          return;
+        }
+        iosCancelFade(id);
+        var start = performance.now();
+        var from = a.volume;
+        var to = Math.min(1, Math.max(0, target));
+        var durMs = Math.max(1, durationSec * 1000);
+        function step(t) {
+          var p = Math.min(1, (t - start) / durMs);
+          a.volume = from + (to - from) * p;
+          if (p < 1) {
+            iosFadeRafs[id] = requestAnimationFrame(step);
+          } else {
+            iosFadeRafs[id] = 0;
+            if (after) after();
+          }
+        }
+        iosFadeRafs[id] = requestAnimationFrame(step);
+      }
+
       function setTrackAudibleGain(id, linear /* 0–1 */, immediate) {
+        if (!isFinite(linear)) linear = 0.5;
+        if (isIOS) {
+          var a2 = iosGetAudio(id);
+          if (!a2) return;
+          var v2 = enabled[id] ? (linear * getMasterLinear()) : 0;
+          if (immediate) {
+            iosCancelFade(id);
+            a2.volume = v2;
+          } else {
+            iosFadeTo(id, v2, FADE_SEC, null);
+          }
+          return;
+        }
+
         var g = trackGains[id];
         if (!g) return;
-        if (!isFinite(linear)) linear = 0.5;
         var v = enabled[id] ? linear : 0;
         var t = now();
         if (immediate) {
@@ -906,6 +992,7 @@
        * This avoids the audible seam that can happen with naive looping.
        */
       function startCrossfadeLoop(id) {
+        if (isIOS) return;
         if (!audioReady || !buffers[id]) return;
         if (loopStates[id] && loopStates[id].active && loopStates[id].active.length) return;
 
@@ -1029,12 +1116,33 @@
       }
 
       async function ensureLoadedAndStart(id) {
+        if (isIOS) {
+          var a = iosGetAudio(id);
+          if (!a) return;
+          if (!enabled[id]) return;
+          try {
+            await a.play();
+          } catch (e) {
+            // iOS will reject play() without a user gesture; callers already run in one.
+          }
+          return;
+        }
+
         await loadTrackBuffer(id);
         if (!enabled[id]) return; // user turned it off while loading
         startCrossfadeLoop(id);
       }
 
       function stopSource(id) {
+        if (isIOS) {
+          var a = iosAudios[id] || iosGetAudio(id);
+          if (!a) return;
+          iosFadeTo(id, 0, 0.12, function () {
+            try { a.pause(); } catch (e) { /* ignore */ }
+          });
+          return;
+        }
+
         var st = loopStates[id];
         if (!st) return;
         // Cancel scheduled spawns
@@ -1054,6 +1162,14 @@
       }
 
       function fadeOutAndStopTrack(id, durationSec, thenStop) {
+        if (isIOS) {
+          iosFadeTo(id, 0, durationSec, function () {
+            stopSource(id);
+            thenStop();
+          });
+          return;
+        }
+
         var g = trackGains[id];
         if (!g) {
           thenStop();
@@ -1216,7 +1332,14 @@
         elMasterVol.addEventListener('input', function () {
           var v = parseInt(elMasterVol.value, 10);
           elMasterVolVal.textContent = v + '%';
-          if (masterGain && ctx) {
+          if (isIOS) {
+            // Apply master volume immediately to all playing tracks
+            TRACKS.forEach(function (def) {
+              var id = def.id;
+              if (!enabled[id]) return;
+              setTrackAudibleGain(id, (volumes[id] != null ? volumes[id] : 50) / 100, true);
+            });
+          } else if (masterGain && ctx) {
             masterGain.gain.setTargetAtTime(v / 100, ctx.currentTime, 0.02);
           }
           scheduleSave();
@@ -1227,22 +1350,24 @@
         if (audioReady) return;
         elBtnLoad.disabled = true;
         setBannerInfo('Initializing audio…');
-        var c = getCtx();
-        // Attempt to resume, but don't require it (autoplay policies vary).
-        try {
-          if (c.state === 'suspended') await c.resume();
-        } catch (e) {
-          /* ignore: will resume on next user gesture */
-        }
+        if (!isIOS) {
+          var c = getCtx();
+          // Attempt to resume, but don't require it (autoplay policies vary).
+          try {
+            if (c.state === 'suspended') await c.resume();
+          } catch (e) {
+            /* ignore: will resume on next user gesture */
+          }
 
-        // Create gain nodes up-front (fast) so sliders work immediately.
-        TRACKS.forEach(function (def) {
-          if (trackGains[def.id]) return;
-          var g = c.createGain();
-          g.gain.value = 0;
-          g.connect(masterGain);
-          trackGains[def.id] = g;
-        });
+          // Create gain nodes up-front (fast) so sliders work immediately.
+          TRACKS.forEach(function (def) {
+            if (trackGains[def.id]) return;
+            var g = c.createGain();
+            g.gain.value = 0;
+            g.connect(masterGain);
+            trackGains[def.id] = g;
+          });
+        }
 
         audioReady = true;
         Object.keys(tileEls).forEach(function (id) {
@@ -1254,7 +1379,9 @@
         elBtnLoad.textContent = 'Audio ready';
         elBtnLoad.disabled = true; // one-time init
         setBannerInfo(
-          'Audio ready. Tap tiles to load/play sounds on demand. Open “Mix selected levels” to adjust volumes.'
+          isIOS
+            ? 'iOS mode enabled. Tap tiles to play sounds (native audio is used to better support lock screen).'
+            : 'Audio ready. Tap tiles to load/play sounds on demand. Open “Mix selected levels” to adjust volumes.'
         );
         // No persistence on refresh.
       }
@@ -1265,7 +1392,7 @@
        */
       async function ensureAudioReadyFromGesture() {
         await initAudio();
-        if (ctx && ctx.state === 'suspended') {
+        if (!isIOS && ctx && ctx.state === 'suspended') {
           await ctx.resume();
         }
       }
@@ -1412,9 +1539,15 @@
 
         TRACKS.forEach(function (def) {
           var id = def.id;
-          var st = loopStates[id];
-          var hasActive = !!(st && st.active && st.active.length);
-          if (!hasActive && (!trackGains[id] || trackGains[id].gain.value < 0.001)) {
+          var hasActive;
+          if (isIOS) {
+            var a = iosAudios[id];
+            hasActive = !!(a && !a.paused && a.volume > 0.0005);
+          } else {
+            var st = loopStates[id];
+            hasActive = !!(st && st.active && st.active.length);
+          }
+          if (!hasActive && (!isIOS && (!trackGains[id] || trackGains[id].gain.value < 0.001))) {
             doneOne();
             return;
           }
