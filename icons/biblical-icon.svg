@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Biblical Meditation icon">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5ecfff"/>
+      <stop offset="0.55" stop-color="#7c7bf0"/>
+      <stop offset="1" stop-color="#a78bfa"/>
+    </linearGradient>
+    <radialGradient id="bg" cx="40%" cy="30%" r="75%">
+      <stop offset="0" stop-color="#151b37"/>
+      <stop offset="1" stop-color="#060814"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <circle cx="186" cy="190" r="98" fill="url(#g)" opacity="0.95"/>
+  <path d="M300 140c-44 18-74 61-74 111 0 66 54 120 120 120 30 0 58-11 79-30-20 47-67 81-122 81-74 0-134-60-134-134 0-63 43-116 101-128z"
+        fill="#f0f4ff" opacity="0.9"/>
+  <path d="M192 345c34-6 68-6 102 0"
+        fill="none" stroke="url(#g)" stroke-width="18" stroke-linecap="round" opacity="0.85"/>
+  <circle cx="360" cy="165" r="6" fill="#f0f4ff" opacity="0.8"/>
+  <circle cx="395" cy="200" r="4" fill="#f0f4ff" opacity="0.7"/>
+  <circle cx="330" cy="220" r="3" fill="#f0f4ff" opacity="0.6"/>
+</svg>
+

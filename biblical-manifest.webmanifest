@@ -1,0 +1,25 @@
+{
+  "name": "Biblical Meditation",
+  "short_name": "Meditation",
+  "description": "Ambient sound mixer with biblical locale presets and meditation timer.",
+  "start_url": "./biblical-meditation.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#060814",
+  "theme_color": "#0a0d18",
+  "icons": [
+    {
+      "src": "icons/biblical-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/biblical-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
+

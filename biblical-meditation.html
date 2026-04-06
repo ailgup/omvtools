@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0a0d18" />
   <title>Biblical Meditation — Ambient Sounds</title>
+  <link rel="manifest" href="biblical-manifest.webmanifest" />
+  <link rel="icon" href="icons/biblical-icon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -1578,6 +1580,18 @@
       var defaultMinBtn = document.querySelector('.timer-presets [data-min="10"]');
       if (defaultMinBtn) defaultMinBtn.classList.add('active');
       updateTimerDisplay();
+    })();
+  </script>
+
+  <script>
+    // PWA (GitHub Pages-friendly): register service worker in same directory scope.
+    (function () {
+      if (!('serviceWorker' in navigator)) return;
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./biblical-sw.js').catch(function () {
+          /* ignore */
+        });
+      });
     })();
   </script>
 </body>
