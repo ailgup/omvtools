@@ -1,0 +1,1584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0d18" />
+  <title>Biblical Meditation — Ambient Sounds</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <!--
+    Audio files:
+      This app loads every audio file referenced in the TRACKS list (see script).
+      Your files live in: audio/
+      Example filenames you currently have:
+        audio/wind.mp3
+        audio/oceanwaves.aac
+        audio/rain.aac
+        audio/waterstream.aac
+        audio/forest.aac
+        ...and more.
+      For best results, use seamless loops; clicks/gaps typically come from non-seamless source files.
+  -->
+  <style>
+    /*
+     * Look & feel inspired by sleep-mixer apps (e.g. BetterSleep):
+     * deep night-sky gradient, glass panels, glowing sound orbs, cool teal accents.
+     */
+    :root {
+      --bg-deep: #060814;
+      --bg-mid: #0f1428;
+      --bg-purple: #16102a;
+      --glass: rgba(255, 255, 255, 0.06);
+      --glass-border: rgba(255, 255, 255, 0.1);
+      --text: #f0f4ff;
+      --text-muted: rgba(200, 210, 235, 0.65);
+      --accent: #5ecfff;
+      --accent-2: #a78bfa;
+      --accent-glow: rgba(94, 207, 255, 0.45);
+      --accent-soft: rgba(94, 207, 255, 0.14);
+      --tile-idle: rgba(30, 38, 68, 0.75);
+      --radius: 16px;
+      --radius-pill: 999px;
+      --font: "Plus Jakarta Sans", system-ui, -apple-system, Segoe UI, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      font-size: 100%;
+      color-scheme: dark;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      font-family: var(--font);
+      color: var(--text);
+      background-color: var(--bg-deep);
+      background-image:
+        radial-gradient(ellipse 100% 70% at 50% -30%, rgba(94, 207, 255, 0.12), transparent 55%),
+        radial-gradient(ellipse 80% 50% at 100% 50%, rgba(167, 139, 250, 0.08), transparent),
+        radial-gradient(ellipse 60% 40% at 0% 80%, rgba(56, 189, 248, 0.06), transparent),
+        linear-gradient(168deg, var(--bg-deep) 0%, var(--bg-mid) 42%, var(--bg-purple) 100%);
+      background-attachment: fixed;
+    }
+
+    /* Soft stars / noise (night sky) */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.35;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400'%3E%3Cfilter id='s'%3E%3CfeTurbulence baseFrequency='0.65' numOctaves='3' stitchTiles='stitch' type='fractalNoise'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23s)' opacity='0.12'/%3E%3C/svg%3E");
+      z-index: 0;
+      mix-blend-mode: overlay;
+    }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      max-width: 42rem;
+      margin: 0 auto;
+      padding: 1.35rem 1rem 2.75rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 1.65rem;
+    }
+
+    header h1 {
+      font-family: var(--font);
+      font-size: clamp(1.45rem, 4.2vw, 1.9rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0 0 0.4rem;
+      color: var(--text);
+      text-shadow: 0 0 40px rgba(94, 207, 255, 0.2);
+    }
+
+    header p {
+      margin: 0;
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      font-weight: 500;
+    }
+
+    .banner {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      padding: 0.75rem 0.95rem;
+      margin-bottom: 1.1rem;
+      line-height: 1.45;
+    }
+
+    .banner code {
+      font-size: 0.78em;
+      padding: 0.12rem 0.35rem;
+      border-radius: 6px;
+      background: rgba(94, 207, 255, 0.12);
+      color: var(--accent);
+    }
+
+    .banner strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .banner.error {
+      color: #fecaca;
+      border-color: rgba(248, 113, 113, 0.35);
+      background: rgba(127, 29, 29, 0.35);
+    }
+
+    section {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.15rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    }
+
+    section h2 {
+      font-family: var(--font);
+      font-size: 0.68rem;
+      font-weight: 700;
+      margin: 0 0 1rem;
+      color: var(--text-muted);
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    /* Master volume */
+    .master-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .master-row label {
+      font-size: 0.84rem;
+      font-weight: 600;
+      min-width: 6.5rem;
+      color: var(--text);
+    }
+
+    .master-row input[type="range"] {
+      flex: 1;
+      min-width: 8rem;
+      height: 6px;
+      accent-color: var(--accent);
+    }
+
+    .master-row .value {
+      font-variant-numeric: tabular-nums;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--accent);
+      width: 2.65rem;
+    }
+
+    /* Expandable mixer */
+    .mixer-drawer {
+      margin-top: 1rem;
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      background: rgba(0, 0, 0, 0.2);
+      overflow: hidden;
+    }
+
+    .mixer-drawer summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 0.85rem 1rem;
+      font-size: 0.86rem;
+      font-weight: 600;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      user-select: none;
+    }
+
+    .mixer-drawer summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .mixer-drawer summary::after {
+      content: "▸";
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      transition: transform 0.22s ease;
+    }
+
+    .mixer-drawer[open] summary::after {
+      transform: rotate(90deg);
+      color: var(--accent);
+    }
+
+    .mixer-badge {
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 0.28rem 0.6rem;
+      border-radius: var(--radius-pill);
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+    }
+
+    .mixer-badge.has-selection {
+      background: var(--accent-soft);
+      color: var(--accent);
+      box-shadow: 0 0 20px rgba(94, 207, 255, 0.15);
+    }
+
+    .mixer-panel-inner {
+      padding: 0 1rem 1rem;
+      border-top: 1px solid var(--glass-border);
+    }
+
+    .mixer-empty {
+      margin: 0.75rem 0 0;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .mixer-empty.hidden {
+      display: none;
+    }
+
+    .mixer-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      margin-top: 0.75rem;
+    }
+
+    .mixer-rows.hidden {
+      display: none;
+    }
+
+    .mix-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .mix-row label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .mix-row .mix-slider-row {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+    }
+
+    .mix-row input[type="range"] {
+      flex: 1;
+      accent-color: var(--accent);
+    }
+
+    .mix-row .vol-pct {
+      font-size: 0.76rem;
+      color: var(--accent);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      width: 2.4rem;
+      text-align: right;
+    }
+
+    /* Sound tiles — glowing “orb” like sleep-app library */
+    .tiles-heading {
+      font-family: var(--font);
+      font-size: 0.68rem;
+      font-weight: 700;
+      margin: 1.25rem 0 0.75rem;
+      color: var(--text-muted);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .tile-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+      gap: 0.65rem;
+    }
+
+    .sound-tile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 0.45rem;
+      font-family: var(--font);
+      font-size: 0.72rem;
+      font-weight: 600;
+      line-height: 1.2;
+      min-height: 5.5rem;
+      padding: 0.85rem 0.45rem 0.65rem;
+      margin: 0;
+      border: 1px solid var(--glass-border);
+      border-radius: 22px;
+      background: var(--tile-idle);
+      color: var(--text-muted);
+      cursor: pointer;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      transition:
+        border-color 0.22s ease,
+        background 0.22s ease,
+        color 0.22s ease,
+        transform 0.15s ease,
+        box-shadow 0.22s ease;
+    }
+
+    .sound-tile i {
+      font-size: 1.65rem;
+      line-height: 1;
+      color: rgba(240, 244, 255, 0.82);
+      text-shadow: 0 0 18px rgba(94, 207, 255, 0.16);
+      z-index: 1;
+      margin-top: 0.15rem;
+    }
+
+    .sound-tile .tile-label {
+      z-index: 1;
+      max-width: 100%;
+    }
+
+    .sound-tile::before {
+      content: none;
+    }
+
+    .sound-tile:hover:not(:disabled) {
+      border-color: rgba(94, 207, 255, 0.35);
+      color: var(--text);
+      background: rgba(40, 48, 88, 0.85);
+    }
+
+    .sound-tile:hover:not(:disabled)::before { content: none; }
+
+    .sound-tile:active:not(:disabled) {
+      transform: scale(0.97);
+    }
+
+    .sound-tile.selected {
+      background: linear-gradient(165deg, rgba(94, 207, 255, 0.22) 0%, rgba(167, 139, 250, 0.15) 100%);
+      border-color: rgba(94, 207, 255, 0.55);
+      color: var(--text);
+      box-shadow:
+        0 0 0 1px rgba(94, 207, 255, 0.2),
+        0 8px 28px rgba(94, 207, 255, 0.2),
+        0 0 40px rgba(167, 139, 250, 0.12);
+    }
+
+    .sound-tile.selected::before { content: none; }
+
+    .sound-tile.selected i {
+      color: #ffffff;
+      text-shadow: 0 0 22px rgba(94, 207, 255, 0.35);
+    }
+
+    .sound-tile:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .sound-tile.is-loading {
+      opacity: 0.65;
+    }
+
+    .sound-tile.is-loading .tile-label::after {
+      content: "  • loading";
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .sound-tile.has-error {
+      border-color: rgba(248, 113, 113, 0.5);
+      box-shadow: 0 0 18px rgba(248, 113, 113, 0.18);
+    }
+
+    .sound-tile.has-error::before { content: none; }
+
+    .sound-tile:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+
+    /* Presets */
+    .presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .presets button {
+      font-family: var(--font);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.55rem 0.95rem;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--glass-border);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: background 0.18s, border-color 0.18s, color 0.18s, box-shadow 0.18s, transform 0.1s;
+    }
+
+    .presets button:hover {
+      background: var(--accent-soft);
+      border-color: rgba(94, 207, 255, 0.4);
+      color: var(--text);
+    }
+
+    .presets button:active {
+      transform: scale(0.98);
+    }
+
+    /* Timer */
+    .timer-display {
+      font-family: var(--font);
+      font-size: clamp(2.2rem, 9vw, 3rem);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      text-align: center;
+      margin: 0.35rem 0 1rem;
+      color: var(--text);
+      letter-spacing: 0.04em;
+      text-shadow: 0 0 32px rgba(94, 207, 255, 0.25);
+    }
+
+    .timer-presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      justify-content: center;
+      margin-bottom: 0.85rem;
+    }
+
+    .timer-custom {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin: 0.15rem 0 0.85rem;
+    }
+
+    .timer-custom label {
+      font-family: var(--font);
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .timer-custom input[type="number"] {
+      width: 5.2rem;
+      padding: 0.5rem 0.65rem;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--glass-border);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-align: center;
+      outline: none;
+    }
+
+    .timer-custom input[type="number"]:focus {
+      border-color: rgba(94, 207, 255, 0.55);
+      box-shadow: 0 0 0 3px rgba(94, 207, 255, 0.15);
+    }
+
+    .timer-custom-suffix {
+      font-family: var(--font);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .timer-custom button {
+      font-family: var(--font);
+      font-size: 0.76rem;
+      font-weight: 700;
+      padding: 0.5rem 0.85rem;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--glass-border);
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .timer-custom button:hover {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .timer-presets button {
+      font-family: var(--font);
+      font-size: 0.76rem;
+      font-weight: 600;
+      padding: 0.45rem 0.75rem;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--glass-border);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+
+    .timer-presets button.active {
+      background: var(--accent-soft);
+      border-color: rgba(94, 207, 255, 0.5);
+      color: var(--accent);
+      box-shadow: 0 0 16px rgba(94, 207, 255, 0.12);
+    }
+
+    .timer-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+      justify-content: center;
+    }
+
+    .timer-actions button {
+      font-family: var(--font);
+      font-size: 0.84rem;
+      font-weight: 600;
+      padding: 0.6rem 1.2rem;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--glass-border);
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    .timer-actions button:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .timer-actions button.primary {
+      background: linear-gradient(135deg, #3eb8e8 0%, #5ecfff 40%, #8b7ae8 100%);
+      color: #061018;
+      border: none;
+      box-shadow: 0 4px 24px rgba(94, 207, 255, 0.35);
+    }
+
+    .timer-actions button.primary:hover:not(:disabled) {
+      filter: brightness(1.06);
+    }
+
+    .timer-actions button:disabled {
+      opacity: 0.38;
+      cursor: not-allowed;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 1.5rem;
+      transform: translateX(-50%) translateY(120%);
+      max-width: 90vw;
+      padding: 0.95rem 1.35rem;
+      background: linear-gradient(165deg, rgba(30, 38, 68, 0.95), rgba(22, 16, 42, 0.98));
+      color: var(--text);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      font-family: var(--font);
+      font-size: 0.9rem;
+      font-weight: 500;
+      text-align: center;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 0 32px rgba(94, 207, 255, 0.12);
+      transition: transform 0.45s ease, opacity 0.45s ease;
+      opacity: 0;
+      z-index: 100;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .load-btn {
+      width: 100%;
+      margin-top: 0.65rem;
+      padding: 0.75rem 1rem;
+      font-family: var(--font);
+      font-size: 0.92rem;
+      font-weight: 700;
+      border-radius: var(--radius-pill);
+      border: none;
+      background: linear-gradient(135deg, #3eb8e8 0%, #5ecfff 45%, #9b87f5 100%);
+      color: #050810;
+      cursor: pointer;
+      box-shadow: 0 6px 28px rgba(94, 207, 255, 0.35);
+      transition: filter 0.15s, transform 0.1s;
+    }
+
+    .load-btn:hover:not(:disabled) {
+      filter: brightness(1.05);
+    }
+
+    .load-btn:active:not(:disabled) {
+      transform: scale(0.99);
+    }
+
+    .load-btn:disabled {
+      opacity: 0.55;
+      cursor: wait;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Biblical Meditation</h1>
+      <p>Ambient soundscape for prayer and stillness</p>
+    </header>
+
+    <div id="banner" class="banner">
+      For faster start, this app plays 30-second loop clips from <code>audio_clips/</code> (generated from your <code>audio/</code> files).
+      <strong>Tap any tile</strong> (or press Start) to enable audio, then tap tiles to load/play sounds on demand.
+    </div>
+
+    <section aria-labelledby="sounds-heading">
+      <h2 id="sounds-heading">Sounds</h2>
+      <div class="master-row">
+        <label for="masterVol">Master volume</label>
+        <input type="range" id="masterVol" min="0" max="100" value="80" aria-valuetext="80%" />
+        <span class="value" id="masterVolVal">80%</span>
+      </div>
+      <button type="button" class="load-btn hidden" id="btnLoad" aria-hidden="true" tabindex="-1">Load sounds</button>
+
+      <details class="mixer-drawer" id="mixerDrawer">
+        <summary>
+          <span>Mix selected levels</span>
+          <span class="mixer-badge" id="mixerBadge" aria-live="polite">0 selected</span>
+        </summary>
+        <div class="mixer-panel-inner">
+          <p class="mixer-empty" id="mixerEmpty">Select one or more sounds below. Only chosen sounds appear here for volume control.</p>
+          <div id="mixerRows" class="mixer-rows hidden" role="group" aria-label="Per-sound volume"></div>
+        </div>
+      </details>
+
+      <h3 class="tiles-heading">Tap to include in the mix</h3>
+      <div id="tileGrid" class="tile-grid" role="group" aria-label="Sound sources"></div>
+    </section>
+
+    <section aria-labelledby="preset-heading">
+      <h2 id="preset-heading">Biblical locales</h2>
+      <div class="presets" role="group" aria-label="Sound presets">
+        <button type="button" data-preset="sinai">Desert (Sinai)</button>
+        <button type="button" data-preset="galilee">Sea of Galilee</button>
+        <button type="button" data-preset="garden">Garden</button>
+        <button type="button" data-preset="night">Night Watch</button>
+        <button type="button" data-preset="stormSea">Storm on the Sea</button>
+        <button type="button" data-preset="upperRoom">Upper Room</button>
+        <button type="button" data-preset="bethlehem">Bethlehem Night</button>
+        <button type="button" data-preset="jordan">Jordan River</button>
+        <button type="button" data-preset="wildernessRest">Wilderness Rest</button>
+        <button type="button" data-preset="marketplace">Marketplace</button>
+      </div>
+    </section>
+
+    <section aria-labelledby="timer-heading">
+      <h2 id="timer-heading">Meditation timer</h2>
+      <div class="timer-presets" role="group" aria-label="Duration">
+        <button type="button" data-min="5">5 min</button>
+        <button type="button" data-min="10">10 min</button>
+        <button type="button" data-min="15">15 min</button>
+        <button type="button" data-min="30">30 min</button>
+        <button type="button" data-min="45">45 min</button>
+        <button type="button" data-min="60">60 min</button>
+      </div>
+      <div class="timer-custom" role="group" aria-label="Custom duration">
+        <label for="customMinutes">Custom</label>
+        <input id="customMinutes" type="number" min="1" max="60" step="1" value="10" inputmode="numeric" />
+        <span class="timer-custom-suffix">min</span>
+        <button type="button" id="btnSetCustom">Set</button>
+      </div>
+      <div class="timer-display" id="timerDisplay" aria-live="polite">—</div>
+      <div class="timer-actions">
+        <button type="button" class="primary" id="btnTimerStart">Start</button>
+        <button type="button" id="btnTimerStop" disabled>Stop</button>
+        <button type="button" id="btnTimerReset">Reset</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="toast" class="toast" role="status">Meditation complete. Peace be with you.</div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      /** @typedef {{ id: string, label: string, file: string }} TrackDef */
+
+      /** @type {TrackDef[]} */
+      var TRACKS = [
+        { id: 'airplane', label: 'Airplane', file: 'audio_clips/airplane.m4a' },
+        { id: 'bonfire', label: 'Bonfire', file: 'audio_clips/bonfire.m4a' },
+        { id: 'brownnoise', label: 'Brown noise', file: 'audio_clips/brownnoise.m4a' },
+        { id: 'bubbles', label: 'Bubbles', file: 'audio_clips/bubbles.m4a' },
+        { id: 'cicadas', label: 'Cicadas', file: 'audio_clips/cicadas.m4a' },
+        { id: 'cityscape', label: 'Cityscape', file: 'audio_clips/cityscape.m4a' },
+        { id: 'coffeeshop', label: 'Coffee shop', file: 'audio_clips/coffeeshop.m4a' },
+        { id: 'fan', label: 'Fan', file: 'audio_clips/fan.m4a' },
+        { id: 'fireplace', label: 'Fireplace', file: 'audio_clips/fireplace.m4a' },
+        { id: 'forest', label: 'Forest', file: 'audio_clips/forest.m4a' },
+        { id: 'leaves', label: 'Leaves', file: 'audio_clips/leaves.m4a' },
+        { id: 'oceanwaves', label: 'Ocean waves', file: 'audio_clips/oceanwaves.m4a' },
+        { id: 'pinknoise', label: 'Pink noise', file: 'audio_clips/pinknoise.m4a' },
+        { id: 'rain', label: 'Rain', file: 'audio_clips/rain.m4a' },
+        { id: 'rainontent', label: 'Rain on tent', file: 'audio_clips/rainontent.m4a' },
+        { id: 'seaside', label: 'Seaside', file: 'audio_clips/seaside.m4a' },
+        { id: 'spaceengine', label: 'Space engine', file: 'audio_clips/spaceengine.m4a' },
+        { id: 'summernight', label: 'Summer night', file: 'audio_clips/summernight.m4a' },
+        { id: 'thunderstorm', label: 'Thunderstorm', file: 'audio_clips/thunderstorm.m4a' },
+        { id: 'train', label: 'Train', file: 'audio_clips/train.m4a' },
+        { id: 'tropicalforest', label: 'Tropical forest', file: 'audio_clips/tropicalforest.m4a' },
+        { id: 'underwater', label: 'Underwater', file: 'audio_clips/underwater.m4a' },
+        { id: 'washingmachine', label: 'Washing machine', file: 'audio_clips/washingmachine.m4a' },
+        { id: 'water', label: 'Water', file: 'audio_clips/water.m4a' },
+        { id: 'waterfall', label: 'Waterfall', file: 'audio_clips/waterfall.m4a' },
+        { id: 'waterstream', label: 'Water stream', file: 'audio_clips/waterstream.m4a' },
+        { id: 'whitenoise', label: 'White noise', file: 'audio_clips/whitenoise.m4a' },
+        { id: 'wind', label: 'Wind', file: 'audio_clips/wind.m4a' },
+        { id: 'dark', label: 'Dark', file: 'audio_clips/dark.m4a' },
+        { id: 'eternity', label: 'Eternity', file: 'audio_clips/eternity.m4a' }
+      ];
+
+      /** @type {Object<string, string>} */
+      var TILE_ICONS = {
+        airplane: 'fa-solid fa-plane',
+        bonfire: 'fa-solid fa-fire',
+        brownnoise: 'fa-solid fa-wave-square',
+        bubbles: 'fa-solid fa-water',
+        cicadas: 'fa-solid fa-bug',
+        cityscape: 'fa-solid fa-city',
+        coffeeshop: 'fa-solid fa-mug-saucer',
+        fan: 'fa-solid fa-fan',
+        fireplace: 'fa-solid fa-fire-flame-curved',
+        forest: 'fa-solid fa-tree',
+        leaves: 'fa-solid fa-leaf',
+        oceanwaves: 'fa-solid fa-water',
+        pinknoise: 'fa-solid fa-sliders',
+        rain: 'fa-solid fa-cloud-rain',
+        rainontent: 'fa-solid fa-campground',
+        seaside: 'fa-solid fa-umbrella-beach',
+        spaceengine: 'fa-solid fa-meteor',
+        summernight: 'fa-solid fa-moon',
+        thunderstorm: 'fa-solid fa-bolt',
+        train: 'fa-solid fa-train',
+        tropicalforest: 'fa-solid fa-seedling',
+        underwater: 'fa-solid fa-fish',
+        washingmachine: 'fa-solid fa-soap',
+        water: 'fa-solid fa-droplet',
+        waterfall: 'fa-solid fa-water',
+        waterstream: 'fa-solid fa-droplet',
+        whitenoise: 'fa-solid fa-signal',
+        wind: 'fa-solid fa-wind',
+        dark: 'fa-solid fa-moon',
+        eternity: 'fa-solid fa-infinity'
+      };
+
+      var FADE_SEC = 0.18;
+      var TIMER_FADE_OUT_SEC = 3.5;
+      // Persistence disabled: page refresh should NOT remember prior sound selection.
+      var STORAGE_KEY = null;
+
+      /** @type {AudioContext | null} */
+      var ctx = null;
+      /** @type {GainNode | null} */
+      var masterGain = null;
+      /** @type {Object<string, AudioBuffer>} */
+      var buffers = {};
+      /** @type {Object<string, Promise<AudioBuffer> | null>} */
+      var bufferPromises = {};
+      /** @type {Object<string, GainNode>} */
+      var trackGains = {};
+      /**
+       * Crossfade looping state per track.
+       * @type {Object<string, { active: AudioBufferSourceNode[], timers: number[], overlap: number }>}
+       */
+      var loopStates = {};
+      /** @type {Object<string, boolean>} */
+      var enabled = {};
+      /** @type {Object<string, number>} */
+      var volumes = {};
+
+      var audioReady = false;
+      var saveTimer = null;
+
+      var timerDurationSec = 0;
+      var timerRemainingSec = 0;
+      var timerInterval = null;
+      var timerEndTime = 0;
+
+      var elBanner = document.getElementById('banner');
+      var elTileGrid = document.getElementById('tileGrid');
+      var elMixerRows = document.getElementById('mixerRows');
+      var elMixerEmpty = document.getElementById('mixerEmpty');
+      var elMixerBadge = document.getElementById('mixerBadge');
+      /** @type {Object<string, HTMLButtonElement>} */
+      var tileEls = {};
+      var elMasterVol = document.getElementById('masterVol');
+      var elMasterVolVal = document.getElementById('masterVolVal');
+      var elBtnLoad = document.getElementById('btnLoad');
+      var elTimerDisplay = document.getElementById('timerDisplay');
+      var elBtnTimerStart = document.getElementById('btnTimerStart');
+      var elBtnTimerStop = document.getElementById('btnTimerStop');
+      var elBtnTimerReset = document.getElementById('btnTimerReset');
+      var elCustomMinutes = document.getElementById('customMinutes');
+      var elBtnSetCustom = document.getElementById('btnSetCustom');
+      var elToast = document.getElementById('toast');
+
+      function getCtx() {
+        if (!ctx) {
+          var AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) {
+            throw new Error('Web Audio API not supported');
+          }
+          ctx = new AC();
+          masterGain = ctx.createGain();
+          masterGain.connect(ctx.destination);
+          var m = parseInt(elMasterVol.value, 10) / 100;
+          masterGain.gain.value = m;
+        }
+        return ctx;
+      }
+
+      function now() {
+        return getCtx().currentTime;
+      }
+
+      function linearRamp(gainNode, value, endTime) {
+        gainNode.gain.cancelScheduledValues(now());
+        gainNode.gain.setValueAtTime(gainNode.gain.value, now());
+        gainNode.gain.linearRampToValueAtTime(value, endTime);
+      }
+
+      function setTrackAudibleGain(id, linear /* 0–1 */, immediate) {
+        var g = trackGains[id];
+        if (!g) return;
+        if (!isFinite(linear)) linear = 0.5;
+        var v = enabled[id] ? linear : 0;
+        var t = now();
+        if (immediate) {
+          g.gain.cancelScheduledValues(t);
+          g.gain.setValueAtTime(v, t);
+        } else {
+          linearRamp(g, v, t + FADE_SEC);
+        }
+      }
+
+      /**
+       * Start a crossfaded loop for this track using overlapping one-shots.
+       * This avoids the audible seam that can happen with naive looping.
+       */
+      function startCrossfadeLoop(id) {
+        if (!audioReady || !buffers[id]) return;
+        if (loopStates[id] && loopStates[id].active && loopStates[id].active.length) return;
+
+        var c = getCtx();
+        var buf = buffers[id];
+        var dur = Math.max(0.25, buf.duration || 0);
+        // Crossfade duration (seconds): short but enough to hide seams.
+        var overlap = Math.min(1.25, Math.max(0.18, dur * 0.08));
+
+        loopStates[id] = loopStates[id] || { active: [], timers: [], overlap: overlap };
+        loopStates[id].overlap = overlap;
+
+        function spawn(atTime) {
+          // Source (one-shot, not loop=true)
+          var src = c.createBufferSource();
+          src.buffer = buf;
+          src.loop = false;
+
+          // Per-spawn gain envelope feeding the track gain.
+          var env = c.createGain();
+          env.gain.setValueAtTime(0, atTime);
+          env.gain.linearRampToValueAtTime(1, atTime + overlap);
+          env.gain.setValueAtTime(1, Math.max(atTime + overlap, atTime + dur - overlap));
+          env.gain.linearRampToValueAtTime(0, atTime + dur);
+
+          src.connect(env);
+          env.connect(trackGains[id]);
+
+          try {
+            src.start(atTime);
+            src.stop(atTime + dur + 0.05);
+          } catch (e) {
+            /* ignore */
+          }
+
+          loopStates[id].active.push(src);
+          src.onended = function () {
+            var st = loopStates[id];
+            if (!st) return;
+            st.active = st.active.filter(function (n) { return n !== src; });
+          };
+        }
+
+        function schedule() {
+          var st = loopStates[id];
+          if (!st || !enabled[id]) return;
+          var t = c.currentTime;
+          // Schedule next layer slightly ahead.
+          var nextAt = t + 0.06;
+          spawn(nextAt);
+
+          // Plan the next spawn near the end, overlapping by `overlap`.
+          var delayMs = Math.max(20, (dur - overlap) * 1000);
+          var tid = window.setTimeout(schedule, delayMs);
+          st.timers.push(tid);
+        }
+
+        schedule();
+      }
+
+      function setBannerError(html) {
+        elBanner.classList.add('error');
+        elBanner.innerHTML = html;
+      }
+
+      function setBannerInfo(html) {
+        elBanner.classList.remove('error');
+        elBanner.innerHTML = html;
+      }
+
+      /**
+       * Lazy-load a single track buffer (fetch + decode) the first time it’s needed.
+       * @param {string} id
+       * @returns {Promise<AudioBuffer>}
+       */
+      function loadTrackBuffer(id) {
+        if (buffers[id]) return Promise.resolve(buffers[id]);
+        if (bufferPromises[id]) return bufferPromises[id];
+        if (!audioReady) return Promise.reject(new Error('Audio not initialized'));
+
+        var def = null;
+        for (var i = 0; i < TRACKS.length; i++) {
+          if (TRACKS[i].id === id) {
+            def = TRACKS[i];
+            break;
+          }
+        }
+        if (!def) return Promise.reject(new Error('Unknown track: ' + id));
+
+        var tile = tileEls[id];
+        if (tile) {
+          tile.classList.add('is-loading');
+          tile.classList.remove('has-error');
+        }
+        var p = (async function () {
+          var c = getCtx();
+          var res = await fetch(def.file);
+          if (!res.ok) throw new Error(res.status + ' ' + res.statusText);
+          var ab = await res.arrayBuffer();
+          var buf = await c.decodeAudioData(ab.slice(0));
+          buffers[id] = buf;
+          return buf;
+        })();
+
+        bufferPromises[id] = p;
+        p.then(
+          function () {
+            bufferPromises[id] = null;
+            if (tile) tile.classList.remove('is-loading');
+          },
+          function (err) {
+            bufferPromises[id] = null;
+            if (tile) {
+              tile.classList.remove('is-loading');
+              tile.classList.add('has-error');
+            }
+            throw err;
+          }
+        );
+        return p;
+      }
+
+      async function ensureLoadedAndStart(id) {
+        await loadTrackBuffer(id);
+        if (!enabled[id]) return; // user turned it off while loading
+        startCrossfadeLoop(id);
+      }
+
+      function stopSource(id) {
+        var st = loopStates[id];
+        if (!st) return;
+        // Cancel scheduled spawns
+        if (st.timers && st.timers.length) {
+          st.timers.forEach(function (tid) {
+            try { clearTimeout(tid); } catch (e) { /* ignore */ }
+          });
+        }
+        st.timers = [];
+        // Stop any active sources quickly
+        if (st.active && st.active.length) {
+          st.active.forEach(function (src) {
+            try { src.stop(); } catch (e) { /* ignore */ }
+          });
+        }
+        st.active = [];
+      }
+
+      function fadeOutAndStopTrack(id, durationSec, thenStop) {
+        var g = trackGains[id];
+        if (!g) {
+          thenStop();
+          return;
+        }
+        var t = now();
+        linearRamp(g, 0, t + durationSec);
+        window.setTimeout(
+          function () {
+            stopSource(id);
+            thenStop();
+          },
+          durationSec * 1000 + 50
+        );
+      }
+
+      function syncTileVisual(id) {
+        var tile = tileEls[id];
+        if (!tile) return;
+        tile.classList.toggle('selected', !!enabled[id]);
+        tile.setAttribute('aria-pressed', enabled[id] ? 'true' : 'false');
+      }
+
+      /**
+       * Rebuild volume sliders in the expandable mixer (selected tracks only).
+       */
+      function refreshMixerRows() {
+        var count = 0;
+        TRACKS.forEach(function (d) {
+          if (enabled[d.id]) count++;
+        });
+
+        if (elMixerBadge) {
+          elMixerBadge.textContent = count === 0 ? '0 selected' : count + ' selected';
+          elMixerBadge.classList.toggle('has-selection', count > 0);
+        }
+
+        if (elMixerEmpty && elMixerRows) {
+          if (count === 0) {
+            elMixerEmpty.classList.remove('hidden');
+            elMixerRows.classList.add('hidden');
+            elMixerRows.innerHTML = '';
+            return;
+          }
+          elMixerEmpty.classList.add('hidden');
+          elMixerRows.classList.remove('hidden');
+        }
+
+        elMixerRows.innerHTML = '';
+
+        TRACKS.forEach(function (def) {
+          if (!enabled[def.id]) return;
+
+          var wrap = document.createElement('div');
+          wrap.className = 'mix-row';
+
+          var lab = document.createElement('label');
+          lab.setAttribute('for', 'mix-vol-' + def.id);
+          lab.textContent = def.label;
+
+          var sliderRow = document.createElement('div');
+          sliderRow.className = 'mix-slider-row';
+
+          var range = document.createElement('input');
+          range.type = 'range';
+          range.id = 'mix-vol-' + def.id;
+          range.min = '0';
+          range.max = '100';
+          range.value = String(volumes[def.id]);
+          range.disabled = !audioReady;
+
+          var pct = document.createElement('span');
+          pct.className = 'vol-pct';
+          pct.textContent = volumes[def.id] + '%';
+
+          sliderRow.appendChild(range);
+          sliderRow.appendChild(pct);
+          wrap.appendChild(lab);
+          wrap.appendChild(sliderRow);
+          elMixerRows.appendChild(wrap);
+
+          range.addEventListener('input', function () {
+            volumes[def.id] = parseInt(range.value, 10);
+            pct.textContent = volumes[def.id] + '%';
+            setTrackAudibleGain(def.id, volumes[def.id] / 100, true);
+            scheduleSave();
+          });
+        });
+      }
+
+      function buildTileGrid() {
+        TRACKS.forEach(function (def) {
+          enabled[def.id] = false;
+          // Default per-sound level when first enabled.
+          volumes[def.id] = 50;
+
+          var tile = document.createElement('button');
+          tile.type = 'button';
+          tile.className = 'sound-tile';
+          tile.dataset.track = def.id;
+          var iconClass = TILE_ICONS[def.id] || 'fa-regular fa-circle';
+          tile.innerHTML =
+            '<i class=\"' + iconClass + '\" aria-hidden=\"true\"></i>' +
+            '<span class=\"tile-label\">' + def.label + '</span>';
+          tile.setAttribute('aria-pressed', 'false');
+          // Tiles must be clickable immediately; audio will be enabled on first gesture.
+          tile.disabled = false;
+          tile.title = 'Include ' + def.label + ' in the mix';
+
+          tile.addEventListener('click', function () {
+            // This handler is a user gesture: safe place to start/resume AudioContext.
+            ensureAudioReadyFromGesture().then(
+              function () {
+                // If this track was never assigned a valid volume, default to 50%.
+                if (!isFinite(volumes[def.id])) volumes[def.id] = 50;
+
+                enabled[def.id] = !enabled[def.id];
+                syncTileVisual(def.id);
+                if (enabled[def.id]) {
+                  // Lazy-load and start this sound on demand
+                  ensureLoadedAndStart(def.id).then(
+                    function () {
+                      setTrackAudibleGain(def.id, volumes[def.id] / 100, false);
+                    },
+                    function (err) {
+                      enabled[def.id] = false;
+                      syncTileVisual(def.id);
+                      refreshMixerRows();
+                      setBannerError(
+                        '<strong>Failed to load:</strong> <code>' +
+                          def.file +
+                          '</code><br>' +
+                          (err && err.message ? err.message : String(err))
+                      );
+                    }
+                  );
+                } else {
+                  setTrackAudibleGain(def.id, 0, false);
+                  window.setTimeout(function () {
+                    if (!enabled[def.id]) stopSource(def.id);
+                  }, FADE_SEC * 1000 + 80);
+                }
+                refreshMixerRows();
+                scheduleSave();
+              },
+              function (e) {
+                setBannerError((e && e.message) ? e.message : String(e));
+              }
+            );
+          });
+
+          elTileGrid.appendChild(tile);
+          tileEls[def.id] = tile;
+        });
+
+        refreshMixerRows();
+      }
+
+      function wireMaster() {
+        elMasterVol.addEventListener('input', function () {
+          var v = parseInt(elMasterVol.value, 10);
+          elMasterVolVal.textContent = v + '%';
+          if (masterGain && ctx) {
+            masterGain.gain.setTargetAtTime(v / 100, ctx.currentTime, 0.02);
+          }
+          scheduleSave();
+        });
+      }
+
+      async function initAudio() {
+        if (audioReady) return;
+        elBtnLoad.disabled = true;
+        setBannerInfo('Initializing audio…');
+        var c = getCtx();
+        // Attempt to resume, but don't require it (autoplay policies vary).
+        try {
+          if (c.state === 'suspended') await c.resume();
+        } catch (e) {
+          /* ignore: will resume on next user gesture */
+        }
+
+        // Create gain nodes up-front (fast) so sliders work immediately.
+        TRACKS.forEach(function (def) {
+          if (trackGains[def.id]) return;
+          var g = c.createGain();
+          g.gain.value = 0;
+          g.connect(masterGain);
+          trackGains[def.id] = g;
+        });
+
+        audioReady = true;
+        Object.keys(tileEls).forEach(function (id) {
+          tileEls[id].classList.remove('has-error');
+          tileEls[id].classList.remove('is-loading');
+        });
+
+        refreshMixerRows();
+        elBtnLoad.textContent = 'Audio ready';
+        elBtnLoad.disabled = true; // one-time init
+        setBannerInfo(
+          'Audio ready. Tap tiles to load/play sounds on demand. Open “Mix selected levels” to adjust volumes.'
+        );
+        // No persistence on refresh.
+      }
+
+      /**
+       * Ensure the audio graph exists and is resumed, but ONLY call this from a user gesture
+       * (tap/click/keypress). This avoids Chrome autoplay policy errors.
+       */
+      async function ensureAudioReadyFromGesture() {
+        await initAudio();
+        if (ctx && ctx.state === 'suspended') {
+          await ctx.resume();
+        }
+      }
+
+      /**
+       * Presets: which tracks on + volume 0–100 per track id.
+       * @type {Object<string, { on: string[], vol: Object<string, number> }>}
+       */
+      var PRESETS = {
+        sinai: {
+          on: ['wind', 'leaves', 'fireplace'],
+          vol: { wind: 55, leaves: 22, fireplace: 10 }
+        },
+        galilee: {
+          on: ['waterstream', 'forest', 'wind'],
+          vol: { waterstream: 60, forest: 22, wind: 18 }
+        },
+        garden: {
+          on: ['tropicalforest', 'waterfall', 'cicadas'],
+          vol: { tropicalforest: 55, waterfall: 38, cicadas: 18 }
+        },
+        night: {
+          on: ['wind', 'brownnoise', 'rainontent'],
+          vol: { wind: 22, brownnoise: 16, rainontent: 10 }
+        },
+        stormSea: {
+          on: ['thunderstorm', 'oceanwaves', 'wind'],
+          vol: { thunderstorm: 34, oceanwaves: 46, wind: 14 }
+        },
+        upperRoom: {
+          // Quiet interior: steady fan with distant city hush
+          on: ['fan', 'cityscape', 'pinknoise'],
+          vol: { fan: 42, cityscape: 14, pinknoise: 6 }
+        },
+        bethlehem: {
+          // Calm night air with a hearth glow
+          on: ['summernight', 'wind', 'fireplace'],
+          vol: { summernight: 52, wind: 14, fireplace: 10 }
+        },
+        jordan: {
+          // Riverbank: stream + waterfall + a touch of forest
+          on: ['waterstream', 'waterfall', 'forest'],
+          vol: { waterstream: 55, waterfall: 22, forest: 14 }
+        },
+        wildernessRest: {
+          // Gentle, open quiet: wind + leaves + soft brown noise bed
+          on: ['wind', 'leaves', 'brownnoise'],
+          vol: { wind: 28, leaves: 22, brownnoise: 10 }
+        },
+        marketplace: {
+          // Public space ambience (not strictly biblical, but useful)
+          on: ['coffeeshop', 'cityscape'],
+          vol: { coffeeshop: 52, cityscape: 18 }
+        }
+      };
+
+      function applyPreset(key) {
+        var p = PRESETS[key];
+        if (!p) return;
+
+        // Preset click is a user gesture; enable audio if needed.
+        ensureAudioReadyFromGesture().then(
+          function () {
+        TRACKS.forEach(function (def) {
+          var id = def.id;
+          var on = p.on.indexOf(id) !== -1;
+          // IMPORTANT: Don't zero out volumes for unrelated tracks.
+          // Only override volume when the preset explicitly specifies it.
+          var hasPresetVol = p.vol && p.vol[id] != null;
+          var vol = hasPresetVol ? p.vol[id] : (volumes[id] != null ? volumes[id] : 50);
+          if (hasPresetVol) volumes[id] = vol;
+
+          enabled[id] = on;
+          syncTileVisual(id);
+
+          stopSource(id);
+          if (on) {
+            ensureLoadedAndStart(id).then(
+              function () {
+                setTrackAudibleGain(id, vol / 100, false);
+              },
+              function () {
+                /* ignore individual preset load failures */
+              }
+            );
+          } else {
+            setTrackAudibleGain(id, 0, true);
+          }
+        });
+
+        refreshMixerRows();
+        scheduleSave();
+          },
+          function (e) {
+            setBannerError((e && e.message) ? e.message : String(e));
+          }
+        );
+      }
+
+      document.querySelectorAll('[data-preset]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          applyPreset(btn.getAttribute('data-preset'));
+        });
+      });
+
+      function formatTime(sec) {
+        var m = Math.floor(sec / 60);
+        var s = sec % 60;
+        return m + ':' + (s < 10 ? '0' : '') + s;
+      }
+
+      function updateTimerDisplay() {
+        if (timerRemainingSec <= 0 && !timerInterval) {
+          elTimerDisplay.textContent = '—';
+          return;
+        }
+        elTimerDisplay.textContent = formatTime(Math.max(0, timerRemainingSec));
+      }
+
+      function clearTimerInterval() {
+        if (timerInterval) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+        }
+      }
+
+      function fadeAllSoundsAndComplete() {
+        clearTimerInterval();
+        timerRemainingSec = 0;
+        updateTimerDisplay();
+        elBtnTimerStart.disabled = false;
+        elBtnTimerStop.disabled = true;
+
+        if (!audioReady) {
+          showToast();
+          return;
+        }
+
+        var pending = TRACKS.length;
+        function doneOne() {
+          pending--;
+          if (pending <= 0) showToast();
+        }
+
+        TRACKS.forEach(function (def) {
+          var id = def.id;
+          var st = loopStates[id];
+          var hasActive = !!(st && st.active && st.active.length);
+          if (!hasActive && (!trackGains[id] || trackGains[id].gain.value < 0.001)) {
+            doneOne();
+            return;
+          }
+          fadeOutAndStopTrack(id, TIMER_FADE_OUT_SEC, doneOne);
+        });
+      }
+
+      function tickTimer() {
+        var left = Math.ceil((timerEndTime - Date.now()) / 1000);
+        timerRemainingSec = Math.max(0, left);
+        updateTimerDisplay();
+        if (left <= 0) {
+          fadeAllSoundsAndComplete();
+        }
+      }
+
+      function startTimer() {
+        if (timerDurationSec <= 0) {
+          elTimerDisplay.textContent = 'Pick a duration';
+          return;
+        }
+        // Timer start is a user gesture; safe place to resume audio.
+        ensureAudioReadyFromGesture().catch(function () {
+          /* ignore - timer can still run without audio */
+        });
+
+        clearTimerInterval();
+        timerEndTime = Date.now() + timerDurationSec * 1000;
+        timerRemainingSec = timerDurationSec;
+        updateTimerDisplay();
+        timerInterval = setInterval(tickTimer, 250);
+        elBtnTimerStart.disabled = true;
+        elBtnTimerStop.disabled = false;
+      }
+
+      function stopTimer() {
+        clearTimerInterval();
+        elBtnTimerStart.disabled = false;
+        elBtnTimerStop.disabled = true;
+      }
+
+      function resetTimer() {
+        clearTimerInterval();
+        timerRemainingSec = timerDurationSec;
+        updateTimerDisplay();
+        elBtnTimerStart.disabled = false;
+        elBtnTimerStop.disabled = true;
+      }
+
+      function clearTimerPresetActive() {
+        document.querySelectorAll('.timer-presets [data-min]').forEach(function (b) {
+          b.classList.remove('active');
+        });
+      }
+
+      function setTimerMinutes(min) {
+        var m = Math.max(1, Math.min(60, parseInt(min, 10) || 0));
+        timerDurationSec = m * 60;
+        timerRemainingSec = timerDurationSec;
+        updateTimerDisplay();
+      }
+
+      function showToast() {
+        elToast.classList.add('show');
+        window.setTimeout(function () {
+          elToast.classList.remove('show');
+        }, 5000);
+      }
+
+      document.querySelectorAll('.timer-presets [data-min]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          clearTimerPresetActive();
+          btn.classList.add('active');
+          var m = parseInt(btn.getAttribute('data-min'), 10);
+          if (elCustomMinutes) elCustomMinutes.value = String(m);
+          setTimerMinutes(m);
+        });
+      });
+
+      if (elBtnSetCustom && elCustomMinutes) {
+        elBtnSetCustom.addEventListener('click', function () {
+          clearTimerPresetActive();
+          setTimerMinutes(elCustomMinutes.value);
+        });
+        elCustomMinutes.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            elBtnSetCustom.click();
+          }
+        });
+      }
+
+      elBtnTimerStart.addEventListener('click', startTimer);
+      elBtnTimerStop.addEventListener('click', stopTimer);
+      elBtnTimerReset.addEventListener('click', resetTimer);
+
+      // Autoplay policy: don't create/resume AudioContext until a user gesture.
+      // Tiles/presets/timer-start will call ensureAudioReadyFromGesture().
+
+      function scheduleSave() {
+        // Persistence disabled.
+        return;
+        if (saveTimer) clearTimeout(saveTimer);
+        saveTimer = setTimeout(saveState, 400);
+      }
+
+      function saveState() {
+        // Persistence disabled.
+        return;
+        try {
+          var data = {
+            master: parseInt(elMasterVol.value, 10),
+            enabled: Object.assign({}, enabled),
+            volumes: Object.assign({}, volumes)
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        } catch (e) {
+          /* ignore quota / private mode */
+        }
+      }
+
+      function applyFromStorage() {
+        // Persistence disabled.
+        return;
+        try {
+          var raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return;
+          var data = JSON.parse(raw);
+          if (data.master != null) {
+            elMasterVol.value = String(Math.min(100, Math.max(0, data.master)));
+            elMasterVol.dispatchEvent(new Event('input'));
+          }
+          TRACKS.forEach(function (def) {
+            var id = def.id;
+            if (data.volumes && data.volumes[id] != null) {
+              volumes[id] = Math.min(100, Math.max(0, data.volumes[id]));
+            }
+            if (data.enabled && data.enabled[id] != null) {
+              enabled[id] = !!data.enabled[id];
+            }
+            syncTileVisual(id);
+            stopSource(id);
+            if (enabled[id] && audioReady) {
+              ensureLoadedAndStart(id).then(function () {
+                setTrackAudibleGain(id, volumes[id] / 100, true);
+              });
+            }
+          });
+          refreshMixerRows();
+        } catch (e) {
+          /* ignore */
+        }
+      }
+
+      // No global auto-resume; user gesture handlers resume explicitly.
+
+      buildTileGrid();
+      wireMaster();
+
+      /* Default timer: 10 minutes */
+      if (elCustomMinutes) elCustomMinutes.value = '10';
+      setTimerMinutes(10);
+      var defaultMinBtn = document.querySelector('.timer-presets [data-min="10"]');
+      if (defaultMinBtn) defaultMinBtn.classList.add('active');
+      updateTimerDisplay();
+    })();
+  </script>
+</body>
+</html>
