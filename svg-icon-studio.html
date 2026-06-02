@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SVG Icon Studio — OMV Tools</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: rgba(255,255,255,0.04);
+      --border: rgba(255,255,255,0.1);
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --brand: #60a5fa;
+      --brand-2: #34d399;
+      --ring: rgba(96,165,250,0.45);
+      --radius: 12px;
+      --shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      color: var(--text);
+      background: radial-gradient(1200px 800px at 20% -10%, rgba(56,189,248,0.08), transparent),
+                  radial-gradient(1000px 700px at 100% 0%, rgba(34,197,94,0.07), transparent),
+                  linear-gradient(180deg, #0b1020 0%, #0a0f1e 100%);
+    }
+
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: saturate(160%) blur(10px);
+      background: linear-gradient(180deg, rgba(2,6,23,0.85), rgba(2,6,23,0.45));
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .nav-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      text-decoration: none;
+      color: var(--text);
+    }
+    .brand i { color: var(--brand); }
+
+    .main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px 20px 40px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 26px;
+      letter-spacing: -0.02em;
+    }
+    .subtitle {
+      margin: 0 0 22px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 220px 1fr 280px;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel h2 {
+      margin: 0 0 12px;
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+
+    .icon-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .icon-btn {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+      border-radius: 10px;
+      border: 2px solid transparent;
+      background: rgba(255,255,255,0.03);
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s, transform 0.15s;
+      color: var(--text);
+    }
+    .icon-btn:hover {
+      background: rgba(96,165,250,0.1);
+      border-color: rgba(96,165,250,0.25);
+    }
+    .icon-btn[aria-pressed="true"] {
+      border-color: var(--brand);
+      background: rgba(96,165,250,0.14);
+      box-shadow: 0 0 0 3px var(--ring);
+    }
+    .icon-btn svg {
+      width: 100%;
+      height: 100%;
+      max-width: 52px;
+      max-height: 52px;
+      pointer-events: none;
+    }
+    .icon-btn .label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+    }
+
+    .preview-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      min-height: 320px;
+    }
+
+    .preview-stage {
+      width: 100%;
+      flex: 1;
+      min-height: 280px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      border: 1px dashed rgba(255,255,255,0.12);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .preview-stage.checker {
+      background-color: #1e293b;
+      background-image:
+        linear-gradient(45deg, #334155 25%, transparent 25%),
+        linear-gradient(-45deg, #334155 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #334155 75%),
+        linear-gradient(-45deg, transparent 75%, #334155 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+    }
+
+    .preview-stage.solid-bg {
+      background-image: none;
+    }
+
+    #previewHost {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 0;
+    }
+
+    #previewHost svg {
+      display: block;
+      max-width: 100%;
+      max-height: 260px;
+      width: auto;
+      height: auto;
+    }
+
+    .preview-meta {
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .control {
+      margin-bottom: 14px;
+    }
+    .control:last-child { margin-bottom: 0; }
+
+    .control label,
+    .control .control-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 6px;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    input[type="color"] {
+      width: 44px;
+      height: 36px;
+      padding: 2px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: rgba(0,0,0,0.2);
+      cursor: pointer;
+    }
+
+    input[type="color"]:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    input[type="text"],
+    select {
+      flex: 1;
+      min-width: 0;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.25);
+      color: var(--text);
+      font: inherit;
+      font-size: 14px;
+    }
+
+    input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--brand);
+      cursor: pointer;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .hex-input {
+      width: 88px;
+      flex: none;
+      font-family: ui-monospace, monospace;
+      font-size: 13px;
+    }
+
+    .btn-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.12);
+      color: var(--text);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      background: rgba(255,255,255,0.04);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, transform 0.15s;
+    }
+    .btn:hover:not(:disabled) {
+      background: rgba(96,165,250,0.12);
+      border-color: var(--ring);
+      transform: translateY(-1px);
+    }
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .btn.primary {
+      grid-column: span 2;
+      background: linear-gradient(135deg, rgba(96,165,250,0.2), rgba(52,211,153,0.14));
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #1e293b;
+      border: 1px solid var(--border);
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-size: 14px;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transition: transform 0.25s, opacity 0.25s;
+      pointer-events: none;
+      z-index: 100;
+    }
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    @media (max-width: 960px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+      .icon-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+
+    @media (max-width: 520px) {
+      .icon-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .btn-group {
+        grid-template-columns: 1fr;
+      }
+      .btn.primary { grid-column: span 1; }
+    }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html"><i class="fa-solid fa-church"></i> OMV Tools</a>
+      <a class="btn" href="index.html" style="text-decoration:none;padding:8px 12px;"><i class="fa-solid fa-arrow-left"></i> All tools</a>
+    </div>
+  </header>
+
+  <main class="main">
+    <h1><i class="fa-solid fa-palette" style="color:var(--brand);"></i> SVG Icon Studio</h1>
+    <p class="subtitle">Pick a placeholder icon, recolor it, set the background and export size, then download or copy to the clipboard. Replace placeholders with real SVGs later.</p>
+
+    <div class="layout">
+      <aside class="panel">
+        <h2>Icons</h2>
+        <div class="icon-grid" id="iconGrid" role="listbox" aria-label="Icon selection"></div>
+      </aside>
+
+      <section class="panel preview-wrap">
+        <h2 style="align-self:flex-start;margin:0 0 4px;">Preview</h2>
+        <div class="preview-stage checker" id="previewStage">
+          <div id="previewHost"></div>
+        </div>
+        <p class="preview-meta" id="previewMeta">256 × 256 px</p>
+      </section>
+
+      <aside class="panel">
+        <h2>Options</h2>
+
+        <div class="control">
+          <span class="control-label">Icon color</span>
+          <div class="row">
+            <input type="color" id="fillColor" value="#e5e7eb" aria-label="Icon fill color">
+            <input type="text" class="hex-input" id="fillHex" value="#e5e7eb" maxlength="7" spellcheck="false" aria-label="Icon color hex">
+          </div>
+        </div>
+
+        <div class="control">
+          <label class="checkbox-row">
+            <input type="checkbox" id="transparentBg" checked>
+            Transparent background
+          </label>
+        </div>
+
+        <div class="control" id="bgColorControl">
+          <span class="control-label">Background color</span>
+          <div class="row">
+            <input type="color" id="bgColor" value="#ffffff" disabled aria-label="Background color">
+            <input type="text" class="hex-input" id="bgHex" value="#ffffff" maxlength="7" spellcheck="false" disabled aria-label="Background color hex">
+          </div>
+        </div>
+
+        <div class="control">
+          <label for="exportSize">Export size (px)</label>
+          <select id="exportSize">
+            <option value="64">64 × 64</option>
+            <option value="128">128 × 128</option>
+            <option value="256" selected>256 × 256</option>
+            <option value="512">512 × 512</option>
+            <option value="1024">1024 × 1024</option>
+          </select>
+        </div>
+
+        <div class="btn-group">
+          <button type="button" class="btn" id="btnSvg"><i class="fa-solid fa-file-code"></i> SVG</button>
+          <button type="button" class="btn" id="btnPng"><i class="fa-solid fa-image"></i> PNG</button>
+          <button type="button" class="btn" id="btnJpg"><i class="fa-solid fa-image"></i> JPG</button>
+          <button type="button" class="btn primary" id="btnCopy"><i class="fa-solid fa-clipboard"></i> Copy to clipboard</button>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      const SHAPE_TAGS = new Set([
+        'path', 'circle', 'ellipse', 'rect', 'polygon', 'polyline', 'line', 'text', 'use'
+      ]);
+
+      const PLACEHOLDER_ICONS = [
+        {
+          id: 'cross',
+          name: 'Cross',
+          svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2v7H5v3h7v10h2V12h7V9h-7V2h-2z"/></svg>'
+        },
+        {
+          id: 'dove',
+          name: 'Dove',
+          svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19.5 6.2c-1.1-.8-2.5-1-3.8-.6l-2.1.7-1.4-2.1c-.4-.6-1.1-.9-1.8-.7L4 5.8c-.9.3-1.4 1.3-1.1 2.2l1.2 3.5-2.4 1.8c-.7.5-.9 1.5-.4 2.2.3.4.8.6 1.3.6.2 0 .4 0 .6-.1l3.1-1.2.8 2.4c.3.9 1.3 1.4 2.2 1.1l5.5-1.8c.5-.2.9-.5 1.2-1 .5-.8.3-1.8-.5-2.3l-1.8-1.2 1.5-.5c.8-.3 1.3-1.1 1.1-2-.1-.5-.4-1-.8-1.3zm-3.2 1.4l-2.8 1 2.2 1.5-3.4 1.1-.9-2.7 4.9-1.9zM6.2 8.4l2.5 3.7-1.1.4-1.4-4.1zm8.6 7.5-4.5 1.5-.6-1.8 5.1-3.4v3.7z"/></svg>'
+        },
+        {
+          id: 'book',
+          name: 'Book',
+          svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2H6zm0 2h5v16H6V4zm7 0h5v16h-5V4z"/></svg>'
+        },
+        {
+          id: 'flame',
+          name: 'Flame',
+          svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c0 4-4 6-4 10a4 4 0 1 0 8 0c0-2-1.5-3.5-2.5-5 .8 1.5 1.5 3 1.5 5 0 2.2-1.8 4-4 4s-4-1.8-4-4c0-5 5-7 5-10z"/></svg>'
+        },
+        {
+          id: 'heart',
+          name: 'Heart',
+          svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-8-4.5-8-11a5 5 0 0 1 9-2.8A5 5 0 0 1 20 10c0 6.5-8 11-8 11z"/></svg>'
+        },
+        {
+          id: 'star',
+          name: 'Star',
+          svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.9L22 9.2l-5.2 4.5 1.6 7.1L12 17.8 5.6 20.8l1.6-7.1L2 9.2l7.1-.3L12 2z"/></svg>'
+        },
+        {
+          id: 'chalice',
+          name: 'Chalice',
+          svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M8 3h8v2h1c0 3.3-2.1 6.1-5 7.1V18h4v2H7v-2h4v-5.9c-2.9-1-5-3.8-5-7.1h1V3zm2 2v1.2c0 2.4 1.5 4.5 3.5 5.3h1c2-0.8 3.5-2.9 3.5-5.3V5h-8z"/></svg>'
+        },
+        {
+          id: 'fish',
+          name: 'Fish',
+          svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M2 12c4-6 10-8 20-8-2 6-2 10 0 16-10 0-16-2-20-8zm6 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zm10-2.5c1.2 1.5 1.8 3 2 5.5-.2-2.5-.8-4-2-5.5z"/></svg>'
+        }
+      ];
+
+      const iconGrid = document.getElementById('iconGrid');
+      const previewHost = document.getElementById('previewHost');
+      const previewStage = document.getElementById('previewStage');
+      const previewMeta = document.getElementById('previewMeta');
+      const fillColor = document.getElementById('fillColor');
+      const fillHex = document.getElementById('fillHex');
+      const transparentBg = document.getElementById('transparentBg');
+      const bgColor = document.getElementById('bgColor');
+      const bgHex = document.getElementById('bgHex');
+      const exportSize = document.getElementById('exportSize');
+      const toast = document.getElementById('toast');
+
+      let selectedId = PLACEHOLDER_ICONS[0].id;
+      let toastTimer = null;
+
+      function showToast(msg) {
+        toast.textContent = msg;
+        toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+      }
+
+      function normalizeHex(value) {
+        let v = (value || '').trim();
+        if (!v.startsWith('#')) v = '#' + v;
+        if (/^#[0-9a-fA-F]{3}$/.test(v)) {
+          v = '#' + v[1] + v[1] + v[2] + v[2] + v[3] + v[3];
+        }
+        return /^#[0-9a-fA-F]{6}$/.test(v) ? v.toLowerCase() : null;
+      }
+
+      function syncHexInputs(colorInput, hexInput) {
+        const hex = normalizeHex(colorInput.value);
+        if (hex) hexInput.value = hex;
+      }
+
+      function bindColorPair(colorInput, hexInput, onChange) {
+        colorInput.addEventListener('input', () => {
+          syncHexInputs(colorInput, hexInput);
+          onChange();
+        });
+        hexInput.addEventListener('change', () => {
+          const hex = normalizeHex(hexInput.value);
+          if (hex) {
+            colorInput.value = hex;
+            hexInput.value = hex;
+            onChange();
+          } else {
+            syncHexInputs(colorInput, hexInput);
+          }
+        });
+      }
+
+      function parseSvg(svgString) {
+        const doc = new DOMParser().parseFromString(svgString, 'image/svg+xml');
+        const err = doc.querySelector('parsererror');
+        if (err) throw new Error('Invalid SVG');
+        const svg = doc.documentElement;
+        if (svg.tagName.toLowerCase() !== 'svg') throw new Error('Not an SVG root');
+        return svg;
+      }
+
+      function getViewBox(svg) {
+        const vb = svg.getAttribute('viewBox');
+        if (vb) {
+          const parts = vb.trim().split(/[\s,]+/).map(Number);
+          if (parts.length === 4 && parts.every(n => !Number.isNaN(n))) {
+            return { x: parts[0], y: parts[1], w: parts[2], h: parts[3] };
+          }
+        }
+        const w = parseFloat(svg.getAttribute('width')) || 24;
+        const h = parseFloat(svg.getAttribute('height')) || 24;
+        return { x: 0, y: 0, w, h };
+      }
+
+      function recolorShapes(svg, color) {
+        const walk = (node) => {
+          if (node.nodeType !== 1) return;
+          const tag = node.tagName.toLowerCase();
+          if (SHAPE_TAGS.has(tag)) {
+            const fill = node.getAttribute('fill');
+            if (fill !== 'none') {
+              node.setAttribute('fill', color);
+            }
+            if (node.hasAttribute('stroke') && node.getAttribute('stroke') !== 'none') {
+              node.setAttribute('stroke', color);
+            }
+          }
+          for (const child of node.children) walk(child);
+        };
+        walk(svg);
+        svg.style.color = color;
+      }
+
+      function buildExportSvg() {
+        const icon = PLACEHOLDER_ICONS.find(i => i.id === selectedId);
+        if (!icon) throw new Error('No icon selected');
+
+        const size = parseInt(exportSize.value, 10);
+        const fill = fillColor.value;
+        const isTransparent = transparentBg.checked;
+        const background = bgColor.value;
+
+        const source = parseSvg(icon.svg);
+        recolorShapes(source, fill);
+
+        const vb = getViewBox(source);
+        const out = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        out.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        out.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+        out.setAttribute('width', String(size));
+        out.setAttribute('height', String(size));
+
+        if (!isTransparent) {
+          const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          rect.setAttribute('x', String(vb.x));
+          rect.setAttribute('y', String(vb.y));
+          rect.setAttribute('width', String(vb.w));
+          rect.setAttribute('height', String(vb.h));
+          rect.setAttribute('fill', background);
+          out.appendChild(rect);
+        }
+
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        while (source.firstChild) {
+          g.appendChild(source.firstChild);
+        }
+        out.appendChild(g);
+
+        return { svg: out, size, isTransparent, background, name: icon.name };
+      }
+
+      function svgToString(svgEl) {
+        const serializer = new XMLSerializer();
+        return serializer.serializeToString(svgEl);
+      }
+
+      function svgToDataUrl(svgString) {
+        return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
+      }
+
+      function loadImage(url) {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = () => reject(new Error('Failed to render image'));
+          img.src = url;
+        });
+      }
+
+      async function rasterize(mime, quality) {
+        const { svg, size, isTransparent, background } = buildExportSvg();
+        const svgString = svgToString(svg);
+        const url = svgToDataUrl(svgString);
+        const img = await loadImage(url);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        if (mime === 'image/jpeg' || !isTransparent) {
+          ctx.fillStyle = isTransparent ? '#ffffff' : background;
+          ctx.fillRect(0, 0, size, size);
+        }
+
+        ctx.drawImage(img, 0, 0, size, size);
+
+        return new Promise((resolve, reject) => {
+          canvas.toBlob(
+            blob => (blob ? resolve(blob) : reject(new Error('Export failed'))),
+            mime,
+            quality
+          );
+        });
+      }
+
+      function downloadBlob(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      function slugName(name) {
+        return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      }
+
+      function updatePreviewStage() {
+        const isTransparent = transparentBg.checked;
+        previewStage.classList.toggle('checker', isTransparent);
+        previewStage.classList.toggle('solid-bg', !isTransparent);
+        if (!isTransparent) {
+          previewStage.style.backgroundColor = bgColor.value;
+        } else {
+          previewStage.style.backgroundColor = '';
+        }
+      }
+
+      function updatePreview() {
+        const icon = PLACEHOLDER_ICONS.find(i => i.id === selectedId);
+        if (!icon) return;
+
+        const svg = parseSvg(icon.svg);
+        recolorShapes(svg, fillColor.value);
+        svg.removeAttribute('width');
+        svg.removeAttribute('height');
+        svg.style.width = 'min(70%, 220px)';
+        svg.style.height = 'auto';
+
+        previewHost.innerHTML = '';
+        previewHost.appendChild(svg);
+
+        const size = exportSize.value;
+        previewMeta.textContent = `${icon.name} · ${size} × ${size} px export`;
+        updatePreviewStage();
+      }
+
+      function renderIconGrid() {
+        iconGrid.innerHTML = '';
+        PLACEHOLDER_ICONS.forEach((icon, index) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'icon-btn';
+          btn.setAttribute('role', 'option');
+          btn.setAttribute('aria-pressed', icon.id === selectedId ? 'true' : 'false');
+          btn.title = icon.name;
+          btn.dataset.id = icon.id;
+          btn.innerHTML = icon.svg + `<span class="label">${icon.name}</span>`;
+          if (index === 0) btn.setAttribute('aria-selected', 'true');
+          btn.addEventListener('click', () => selectIcon(icon.id));
+          iconGrid.appendChild(btn);
+        });
+      }
+
+      function selectIcon(id) {
+        selectedId = id;
+        iconGrid.querySelectorAll('.icon-btn').forEach(btn => {
+          const on = btn.dataset.id === id;
+          btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+          btn.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        updatePreview();
+      }
+
+      function setBgControlsEnabled() {
+        const on = !transparentBg.checked;
+        bgColor.disabled = !on;
+        bgHex.disabled = !on;
+        updatePreviewStage();
+      }
+
+      transparentBg.addEventListener('change', () => {
+        setBgControlsEnabled();
+        updatePreview();
+      });
+
+      exportSize.addEventListener('change', updatePreview);
+
+      bindColorPair(fillColor, fillHex, updatePreview);
+      bindColorPair(bgColor, bgHex, () => {
+        updatePreviewStage();
+        updatePreview();
+      });
+
+      document.getElementById('btnSvg').addEventListener('click', () => {
+        const { svg, name, size } = buildExportSvg();
+        const blob = new Blob([svgToString(svg)], { type: 'image/svg+xml;charset=utf-8' });
+        downloadBlob(blob, `${slugName(name)}-${size}.svg`);
+        showToast('SVG downloaded');
+      });
+
+      document.getElementById('btnPng').addEventListener('click', async () => {
+        try {
+          const { name, size } = buildExportSvg();
+          const blob = await rasterize('image/png');
+          downloadBlob(blob, `${slugName(name)}-${size}.png`);
+          showToast('PNG downloaded');
+        } catch (e) {
+          showToast(e.message || 'PNG export failed');
+        }
+      });
+
+      document.getElementById('btnJpg').addEventListener('click', async () => {
+        try {
+          const { name, size } = buildExportSvg();
+          const blob = await rasterize('image/jpeg', 0.92);
+          downloadBlob(blob, `${slugName(name)}-${size}.jpg`);
+          showToast('JPG downloaded');
+        } catch (e) {
+          showToast(e.message || 'JPG export failed');
+        }
+      });
+
+      document.getElementById('btnCopy').addEventListener('click', async () => {
+        const { isTransparent } = buildExportSvg();
+        try {
+          if (!navigator.clipboard) throw new Error('Clipboard not supported in this browser');
+
+          if (isTransparent) {
+            const blob = await rasterize('image/png');
+            await navigator.clipboard.write([
+              new ClipboardItem({ 'image/png': blob })
+            ]);
+            showToast('PNG copied to clipboard');
+          } else {
+            const blob = await rasterize('image/png');
+            await navigator.clipboard.write([
+              new ClipboardItem({ 'image/png': blob })
+            ]);
+            showToast('Image copied to clipboard');
+          }
+        } catch (e) {
+          try {
+            const { svg } = buildExportSvg();
+            await navigator.clipboard.writeText(svgToString(svg));
+            showToast('SVG text copied to clipboard');
+          } catch (e2) {
+            showToast(e.message || 'Copy failed — try downloading instead');
+          }
+        }
+      });
+
+      renderIconGrid();
+      setBgControlsEnabled();
+      updatePreview();
+    })();
+  </script>
+</body>
+</html>
